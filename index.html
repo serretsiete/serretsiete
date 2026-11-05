@@ -40,6 +40,7 @@ button:disabled{opacity:.5}
 .hint{font-size:12px;color:var(--ok);font-weight:600}
 .inp{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:6px;align-items:end}
 .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 44px}
+input.pre{color:var(--mut);font-style:italic}
 .inp label{font-size:11px;color:var(--mut);display:block;margin-bottom:2px}
 input,textarea,select{font:inherit;font-size:16px;color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 8px;width:100%}
 input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
@@ -416,13 +417,13 @@ function viewSession(s) {
       h += `<div class="set ${x.done ? 'done' : ''}"><div class="slab"><span>${esc(setLabel(sp, i, e))}</span>${sp.lab && sp.t === 'bi' ? '' : ''}</div>${sp.lab && sp.t === 'bi' ? `<div class="note">${esc(sp.lab)}</div>` : ''}`;
       h += px && px.done ? `<div class="prev">Anterior (${fdate(last.s.date)}): ${esc(prevText(sp, px))}</div>` : '';
       h += hint;
-      const inp = (f, ph, lab, cls, sug) => `<div><label class="${cls || ''}">${lab}</label><input data-f="${f}" data-k="${e.k}" data-i="${i}" ${sug ? 'data-sug="1"' : ''} inputmode="${f[0] === 'w' ? 'decimal' : 'numeric'}" placeholder="${esc(ph)}" value="${x[f] == null ? '' : esc(fmt(x[f]))}"></div>`;
+      const inp = (f, ph, lab, cls, sug, pre) => { const pf = !!pre && x[f] == null; return `<div><label class="${cls || ''}">${lab}</label><input data-f="${f}" data-k="${e.k}" data-i="${i}" ${sug ? 'data-sug="1"' : ''} ${pf ? 'data-pre="1"' : ''} class="${pf ? 'pre' : ''}" inputmode="${f[0] === 'w' ? 'decimal' : 'numeric'}" placeholder="${esc(ph)}" value="${x[f] == null ? (pf ? esc(String(ph)) : '') : esc(fmt(x[f]))}"></div>`; };
       const tick = `<button class="tick ${x.done ? 'on' : ''}" data-a="tick" data-k="${e.k}" data-i="${i}" aria-label="Serie hecha">✓</button>`;
       if (sp.t === 'bi') {
         const nw = num(x.w), sW2 = !!(px && px.w2 != null) || !!nw, phW2 = px && px.w2 != null ? fmt(px.w2) : nw ? fmt(round05(nw / 2)) : 'kg', sR2 = !!(px && px.r2 != null);
-        h += `<div class="inp bi">${inp('w', phW, 'kg', '', sW)}${inp('r', phR, 'reps', '', sR)}${inp('w2', phW2, 'kg lenta', 'slow', sW2)}${inp('r2', sR2 ? px.r2 : 'X', 'reps lentas', 'slow', sR2)}${tick}</div>`;
+        h += `<div class="inp bi">${inp('w', phW, 'kg', '', sW, sW)}${inp('r', phR, 'reps', '', sR, sR)}${inp('w2', phW2, 'kg lenta', 'slow', sW2, !!(px && px.w2 != null))}${inp('r2', sR2 ? px.r2 : 'X', 'reps lentas', 'slow', sR2, sR2)}${tick}</div>`;
       } else {
-        h += `<div class="inp">${inp('w', phW, 'kg', '', sW)}${inp('r', phR, 'reps', '', sR)}${tick}</div>`;
+        h += `<div class="inp">${inp('w', phW, 'kg', '', sW, sW && sp.t !== 'drop')}${inp('r', phR, 'reps', '', sR, sR)}${tick}</div>`;
       }
       h += `</div>`;
     });
@@ -501,7 +502,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.3 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.4 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -572,7 +573,7 @@ const actions = {
     if (x.done) { x.done = false; Store.save(s.id); render(); return; }
     // Si no has escrito nada, usa lo sugerido (lo de la última vez o el % de la descendente)
     const inputs = [...document.querySelectorAll(`input[data-k="${e.k}"][data-i="${i}"]`)];
-    for (const inp of inputs) { const f = inp.dataset.f; if (x[f] == null && inp.dataset.sug && num(inp.placeholder) != null) x[f] = f[0] === 'r' ? Math.round(num(inp.placeholder)) : num(inp.placeholder); }
+    for (const inp of inputs) { const f = inp.dataset.f; if (x[f] == null && inp.dataset.sug) { const raw = inp.value !== '' ? inp.value : inp.placeholder; if (num(raw) != null) x[f] = f[0] === 'r' ? Math.round(num(raw)) : num(raw); } }
     if (sp.t !== 'act' && (x.w == null || x.r == null)) { toast('Escribe kg y repeticiones'); return; }
     x.done = true; Store.save(s.id); render();
     startTimer(restAfter(e, i));
@@ -644,11 +645,12 @@ document.addEventListener('change', ev => {
 // Guarda cada casilla mientras escribes (no hace falta salir de la casilla ni pulsar ✓)
 document.addEventListener('input', ev => {
   const el = ev.target, s = cur(); if (!s) return;
-  if (el.dataset.f) { const x = s.ex[el.dataset.k][+el.dataset.i]; x[el.dataset.f] = num(el.value); Store.save(s.id); }
+  if (el.dataset.f) { const x = s.ex[el.dataset.k][+el.dataset.i]; x[el.dataset.f] = num(el.value); el.classList.remove('pre'); delete el.dataset.pre; Store.save(s.id); }
   else if (el.dataset.x === 'notes') { s.notes = el.value; Store.save(s.id); }
 });
 const VIEWS = ['hoy', 'historial', 'progreso', 'mas'];
 function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); }
+document.addEventListener('focusin', ev => { const el = ev.target; if (el.dataset && el.dataset.pre) { try { el.select(); } catch (e) {} } });
 window.addEventListener('hashchange', route);
 window.addEventListener('pagehide', () => Store.flush());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else Sheets.push(); });
