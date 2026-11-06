@@ -340,6 +340,23 @@ const Sheets = {
     const u = new URL(this.url()); u.searchParams.set('op', 'list');
     const r = await fetch(u.toString()); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'error'); return j.sessions || [];
   },
+  async weights() {
+    if (!this.on() || navigator.onLine === false || this.wBusy) return; this.wBusy = true;
+    try {
+      const q = S.meta.bwq || {};
+      for (const d of Object.keys(q)) {
+        const u = new URL(this.url()); u.searchParams.set('op', q[d] == null ? 'delweight' : 'setweight'); u.searchParams.set('date', d); if (q[d] != null) u.searchParams.set('kg', String(q[d]));
+        const j = await (await fetch(u.toString())).json(); if (j && j.ok) { delete S.meta.bwq[d]; Store.save('meta', false); } else break;
+      }
+      const u = new URL(this.url()); u.searchParams.set('op', 'weights');
+      const j = await (await fetch(u.toString())).json();
+      if (j && j.ok && j.weights) {
+        const m = { ...j.weights }, q2 = S.meta.bwq || {};
+        for (const d of Object.keys(q2)) { if (q2[d] == null) delete m[d]; else m[d] = q2[d]; }
+        if (JSON.stringify(m) !== JSON.stringify(S.meta.bw || {})) { S.meta.bw = m; Store.save('meta', false); if (ui.view === 'progreso' && $('#modal').hidden) render(); }
+      }
+    } catch (e) {} finally { this.wBusy = false; }
+  },
   async steps(force) {
     if (!this.on() || navigator.onLine === false) return;
     if (!force && Date.now() - (this.stAt || 0) < 120000) return; this.stAt = Date.now();
@@ -528,6 +545,7 @@ function bwCard() {
     h += pts.length > 1 ? chart(pts, 'w', 'Peso corporal en kg') : `<p class="small mut" style="margin:6px 0 0">Apunta tu peso otro día para ver la gráfica.</p>`;
     h += `<button class="sm ghost" data-a="bwdel" style="margin-top:6px">Borrar el último</button>`;
   } else h += `<p class="small mut" style="margin:8px 0 0">Apunta tu peso (una vez por semana basta) y verás cómo evoluciona.</p>`;
+  if (!Sheets.on()) h += `<p class="small mut" style="margin:6px 0 0">Conecta Google Sheets (en Más) para guardarlo también en tu hoja privada.</p>`;
   return h + `</div>`;
 }
 function viewProgreso() {
@@ -560,7 +578,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.6.1 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.7 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -646,11 +664,11 @@ const actions = {
   bwsave() {
     const inp = $('#bwin'), v = Math.round(num(String(inp.value).replace(',', '.')) * 10) / 10;
     if (!isFinite(v) || v < 20 || v > 300) { toast('Escribe tu peso en kg (20–300)'); return; }
-    S.meta.bw = S.meta.bw || {}; S.meta.bw[dstr(Date.now())] = v; Store.save('meta', false); toast('Peso guardado: ' + fmt(v) + ' kg'); render();
+    const d = dstr(Date.now()); S.meta.bw = S.meta.bw || {}; S.meta.bw[d] = v; S.meta.bwq = S.meta.bwq || {}; S.meta.bwq[d] = v; Store.save('meta', false); toast('Peso guardado: ' + fmt(v) + ' kg'); render(); Sheets.weights();
   },
   bwdel() {
     const bw = S.meta.bw || {}, ks = Object.keys(bw).sort(), k = ks[ks.length - 1]; if (!k) return;
-    confirmBox('¿Borrar el último peso?', 'Borrar', () => { delete S.meta.bw[k]; Store.save('meta', false); closeModal(); render(); }, `${fmt(bw[k])} kg · ${fdate(new Date(k + 'T12:00:00').getTime())}`);
+    confirmBox('¿Borrar el último peso?', 'Borrar', () => { delete S.meta.bw[k]; S.meta.bwq = S.meta.bwq || {}; S.meta.bwq[k] = null; Store.save('meta', false); closeModal(); render(); Sheets.weights(); }, `${fmt(bw[k])} kg · ${fdate(new Date(k + 'T12:00:00').getTime())}`);
   },
   strange(el) { ui.stRange = +el.dataset.n; render(); },
   copyprev(el) {
@@ -725,7 +743,7 @@ document.addEventListener('input', ev => {
   else if (el.dataset.x === 'notes') { s.notes = el.value; Store.save(s.id); }
 });
 const VIEWS = ['hoy', 'historial', 'progreso', 'mas'];
-function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); }
+function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); if (ui.view === 'progreso') Sheets.weights(); }
 document.addEventListener('focusin', ev => { const el = ev.target; if (el.dataset && el.dataset.pre) { try { el.select(); } catch (e) {} } });
 window.addEventListener('hashchange', route);
 let backing = 0;
@@ -748,7 +766,7 @@ document.getElementById('tabs').addEventListener('click', ev => {
   if (a && a.dataset.v === 'hoy' && ui.view === 'hoy' && ui.cur) { ev.preventDefault(); actions.leave(); }
 });
 window.addEventListener('pagehide', () => Store.flush());
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(true); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(true); Sheets.weights(); } });
 setInterval(() => { if (document.visibilityState === 'visible') Sheets.steps(true); }, 30000);
 window.addEventListener('online', () => Sheets.push());
 
@@ -757,7 +775,7 @@ window.addEventListener('online', () => Sheets.push());
   const dr = openDraft(); if (dr) ui.cur = dr.id;
   try { if (navigator.storage && navigator.storage.persist) (await navigator.storage.persisted()) || (await navigator.storage.persist()); } catch (e) {}
   route();
-  Sheets.push(); Sheets.steps(true);
+  Sheets.push(); Sheets.steps(true); Sheets.weights();
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
