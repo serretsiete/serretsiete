@@ -540,7 +540,7 @@ function bwCard() {
   let h = `<div class="card"><b>⚖️ Peso corporal</b><div class="row" style="margin-top:8px;gap:8px"><input id="bwin" type="text" inputmode="decimal" placeholder="${last ? fmt(last.w) : 'kg'}" style="flex:1" aria-label="Peso en kg"><button class="sm" data-a="bwsave">Guardar</button></div>`;
   if (last) {
     h += `<p class="small" style="margin:8px 0 0">Último: <b>${fmt(last.w)} kg</b> · ${fdate(last.date)}`;
-    if (pts.length > 1) { const d = Math.round((last.w - first.w) * 10) / 10; h += ` · <b>${d > 0 ? '+' : ''}${fmt(d)} kg</b> desde el ${fdate(first.date)}`; }
+    if (pts.length > 1) { const d = Math.round((last.w - first.w) * 100) / 100; h += ` · <b>${d > 0 ? '+' : ''}${fmt(d)} kg</b> desde el ${fdate(first.date)}`; }
     h += `</p>`;
     h += pts.length > 1 ? chart(pts, 'w', 'Peso corporal en kg') : `<p class="small mut" style="margin:6px 0 0">Apunta tu peso otro día para ver la gráfica.</p>`;
     h += `<button class="sm ghost" data-a="bwdel" style="margin-top:6px">Borrar el último</button>`;
@@ -578,7 +578,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.7 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.7.1 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -662,7 +662,7 @@ const actions = {
     startTimer(restAfter(e, i));
   },
   bwsave() {
-    const inp = $('#bwin'), v = Math.round(num(String(inp.value).replace(',', '.')) * 10) / 10;
+    const inp = $('#bwin'), v = Math.round(num(String(inp.value).replace(',', '.')) * 100) / 100;
     if (!isFinite(v) || v < 20 || v > 300) { toast('Escribe tu peso en kg (20–300)'); return; }
     const d = dstr(Date.now()); S.meta.bw = S.meta.bw || {}; S.meta.bw[d] = v; S.meta.bwq = S.meta.bwq || {}; S.meta.bwq[d] = v; Store.save('meta', false); toast('Peso guardado: ' + fmt(v) + ' kg'); render(); Sheets.weights();
   },
