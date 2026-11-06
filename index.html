@@ -41,6 +41,7 @@ button:disabled{opacity:.5}
 .inp{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:6px;align-items:end}
 .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 44px}
 input.pre{color:var(--mut);font-style:italic}
+.ds{display:block;height:5px;border-radius:3px;background:var(--line);margin:6px 3px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:10px;font-weight:600;color:var(--mut);margin-top:2px}
 .inp label{font-size:11px;color:var(--mut);display:block;margin-bottom:2px}
 input,textarea,select{font:inherit;font-size:16px;color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 8px;width:100%}
 input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
@@ -339,6 +340,15 @@ const Sheets = {
     const u = new URL(this.url()); u.searchParams.set('op', 'list');
     const r = await fetch(u.toString()); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'error'); return j.sessions || [];
   },
+  async steps(force) {
+    if (!this.on() || navigator.onLine === false) return;
+    if (!force && Date.now() - (this.stAt || 0) < 120000) return; this.stAt = Date.now();
+    try {
+      const u = new URL(this.url()); u.searchParams.set('op', 'steps');
+      const j = await (await fetch(u.toString())).json();
+      if (j && j.ok && j.steps) { S.meta.steps = j.steps; Store.save('meta', false); if (ui.view === 'hoy' && $('#modal').hidden && !ui.cur) render(); }
+    } catch (e) {}
+  },
   async connect(code) {
     const url = this.parse(code); if (!url) throw new Error('codigo_no_valido');
     await this.post({ op: 'ping' }, url);
@@ -355,15 +365,28 @@ function dayState(n) {
   if (!d) return 'rest' + t;
   return (doneThisWeek(d.id) ? 'done' : n < tn ? 'missed' : 'next') + t;
 }
+const stepGoal = () => Math.max(1000, Number(S.meta.stepGoal) || 10000);
+const kfmt = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + 'k' : String(n);
+function stepsOf(n) {
+  const st = S.meta.steps; if (!st) return null;
+  const now = new Date(), dow = (now.getDay() + 6) % 7, d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + (n - 1));
+  const v = st[dstr(d)]; return v == null ? null : v;
+}
+function stepsLine() {
+  if (!S.meta.steps) return '';
+  const G = stepGoal(), t = S.meta.steps[dstr(Date.now())];
+  return `<p class="small" style="margin:6px 0 0">👟 Hoy: <b>${t == null ? '–' : t.toLocaleString('es-ES')}</b> pasos · meta ${G.toLocaleString('es-ES')}${t >= G ? ' 🎉' : ''}</p>`;
+}
 function weekCard() {
   const ws = weekStats(), nd = PLAN.filter(d => doneThisWeek(d.id)).length;
   let h = `<div class="card"><div class="strip">`;
   for (let n = 1; n <= 7; n++) {
     const d = PLAN.find(p => p.num === n), st = dayState(n), c = st.split(' ')[0];
     const inner = c === 'done' ? '✓' : c === 'missed' ? '✕' : d ? d.ico : '–';
-    h += d ? `<button class="dot ${st}" data-a="start" data-d="${d.id}" aria-label="${WD[n - 1]}">${LET[n - 1]}<i>${inner}</i></button>` : `<div class="dot ${st}">${LET[n - 1]}<i>${inner}</i></div>`;
+    const sv = stepsOf(n), G = stepGoal(), hs = S.meta.steps ? `<span class="ds ${sv >= G ? 'g' : ''}"><b style="width:${Math.min(100, Math.round((sv || 0) / G * 100))}%"></b></span><span class="dn">${sv == null ? '·' : kfmt(sv)}</span>` : '';
+    h += d ? `<button class="dot ${st}" data-a="start" data-d="${d.id}" aria-label="${WD[n - 1]}">${LET[n - 1]}<i>${inner}</i>${hs}</button>` : `<div class="dot ${st}">${LET[n - 1]}<i>${inner}</i>${hs}</div>`;
   }
-  h += `</div><div class="bar ${nd >= PLAN.length ? 'g' : ''}"><b style="width:${Math.round(nd / PLAN.length * 100)}%"></b></div><p class="small mut" style="margin:0">${nd} de ${PLAN.length} entrenos${nd >= PLAN.length ? ' 🎉' : ''} · abdominales ${ws.abs}/3 · gemelo ${ws.calves} días</p></div>`;
+  h += `</div><div class="bar ${nd >= PLAN.length ? 'g' : ''}"><b style="width:${Math.round(nd / PLAN.length * 100)}%"></b></div><p class="small mut" style="margin:0">${nd} de ${PLAN.length} entrenos${nd >= PLAN.length ? ' 🎉' : ''} · abdominales ${ws.abs}/3 · gemelo ${ws.calves} días</p>${stepsLine()}</div>`;
   return h;
 }
 function viewHoy() {
@@ -499,10 +522,11 @@ function viewMas() {
   } else {
     h += `<div class="card"><p class="small mut">Pega aquí el código de conexión de tu hoja (empieza por https://script.google.com/…).</p><input id="shcode" placeholder="https://script.google.com/macros/s/…/exec?k=…" autocapitalize="off" autocomplete="off" spellcheck="false"><button class="pri block" data-a="shconnect">Conectar</button></div>`;
   }
+  h += `<h2>Pasos</h2><div class="card"><label class="small mut" for="stepgoal">Meta diaria de pasos</label><input id="stepgoal" type="number" inputmode="numeric" min="1000" max="100000" step="500" value="${stepGoal()}"><p class="small mut" style="margin:6px 0 0">Cámbiala cuando quieras; se guarda sola. Los pasos llegan desde Salud por un atajo del iPhone.</p></div>`;
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.4 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -625,6 +649,7 @@ document.addEventListener('click', ev => {
 document.addEventListener('change', ev => {
   const el = ev.target;
   if (el.id === 'impfile' && el.files[0]) { el.files[0].text().then(t => { let o; try { o = JSON.parse(t); } catch (x) { toast('Archivo no válido'); return; } confirmBox('¿Restaurar esta copia?', 'Restaurar', () => importData(o), 'Sustituirá todos los registros actuales.'); }); return; }
+  if (el.id === 'stepgoal') { const v = Math.round(Number(el.value)); if (v >= 1000 && v <= 100000) { S.meta.stepGoal = v; Store.save('meta', false); toast('Meta: ' + v.toLocaleString('es-ES') + ' pasos'); } else { el.value = stepGoal(); toast('Entre 1.000 y 100.000'); } return; }
   if (el.dataset.f) {
     const s = cur(); if (!s) return; const x = s.ex[el.dataset.k][+el.dataset.i], f = el.dataset.f, v = num(el.value);
     x[f] = f[0] === 'r' && v != null ? Math.round(v) : v; Store.save(s.id);
@@ -653,7 +678,7 @@ function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIE
 document.addEventListener('focusin', ev => { const el = ev.target; if (el.dataset && el.dataset.pre) { try { el.select(); } catch (e) {} } });
 window.addEventListener('hashchange', route);
 window.addEventListener('pagehide', () => Store.flush());
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else Sheets.push(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(); } });
 window.addEventListener('online', () => Sheets.push());
 
 (async function boot() {
@@ -661,7 +686,7 @@ window.addEventListener('online', () => Sheets.push());
   const dr = openDraft(); if (dr) ui.cur = dr.id;
   try { if (navigator.storage && navigator.storage.persist) (await navigator.storage.persisted()) || (await navigator.storage.persist()); } catch (e) {}
   route();
-  Sheets.push();
+  Sheets.push(); Sheets.steps(true);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
