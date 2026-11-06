@@ -526,15 +526,16 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5.1 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5.2 · plan de adaptación</p>`;
   return h;
 }
 function render() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.v === ui.view));
   $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : viewHoy();
+  histSync();
 }
-function openModal(h) { const m = $('#modal'); m.innerHTML = `<div class="sheet">${h}</div>`; m.hidden = false; }
-function closeModal() { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; ui.confirm = null; }
+function openModal(h) { const m = $('#modal'); const was = !m.hidden; m.innerHTML = `<div class="sheet">${h}</div>`; m.hidden = false; if (!was) { try { history.pushState({ m: 1, s: ui.cur ? 1 : 0 }, ''); } catch (e) {} } }
+function closeModal() { const m = $('#modal'), was = !m.hidden; m.hidden = true; m.innerHTML = ''; ui.confirm = null; if (was && history.state && history.state.m) goBack(); }
 function confirmBox(t, yes, cb, extra) { ui.confirm = cb; openModal(`<h3>${esc(t)}</h3>${extra ? `<p class="small mut">${esc(extra)}</p>` : ''}<div class="row" style="justify-content:flex-end;margin-top:14px"><button data-a="close">Cancelar</button><button class="pri" data-a="yes">${esc(yes)}</button></div>`); }
 
 /* ================= Resumen al terminar ================= */
@@ -677,6 +678,25 @@ const VIEWS = ['hoy', 'historial', 'progreso', 'mas'];
 function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); }
 document.addEventListener('focusin', ev => { const el = ev.target; if (el.dataset && el.dataset.pre) { try { el.select(); } catch (e) {} } });
 window.addEventListener('hashchange', route);
+let backing = 0;
+function goBack() { backing++; try { history.back(); } catch (e) { backing--; } }
+function histSync() {
+  if (backing) return;
+  const st = history.state || {};
+  if (ui.cur && ui.view === 'hoy' && !st.s) { try { history.pushState({ s: 1 }, ''); } catch (e) {} }
+  else if (!ui.cur && st.s && !st.m) goBack();
+}
+window.addEventListener('popstate', ev => {
+  const st = ev.state || {};
+  if (backing) { backing--; if (!$('#modal').hidden && !st.m) { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; ui.confirm = null; } histSync(); return; }
+  if (!$('#modal').hidden && !st.m) { const m = $('#modal'); m.hidden = true; m.innerHTML = ''; ui.confirm = null; }
+  if (ui.cur && !st.s && ui.view === 'hoy') { ui.cur = null; render(); scrollTo(0, 0); }
+  else if (!ui.cur && st.s && !st.m) goBack();
+});
+document.getElementById('tabs').addEventListener('click', ev => {
+  const a = ev.target.closest('a[data-v]');
+  if (a && a.dataset.v === 'hoy' && ui.view === 'hoy' && ui.cur) { ev.preventDefault(); actions.leave(); }
+});
 window.addEventListener('pagehide', () => Store.flush());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(); } });
 window.addEventListener('online', () => Sheets.push());
