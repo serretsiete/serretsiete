@@ -41,7 +41,7 @@ button:disabled{opacity:.5}
 .inp{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:6px;align-items:end}
 .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 44px}
 input.pre{color:var(--mut);font-style:italic}
-.ds{display:block;height:5px;border-radius:3px;background:var(--line);margin:6px 3px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:10px;font-weight:600;color:var(--mut);margin-top:2px}
+.ds{display:block;height:9px;border-radius:5px;background:var(--line);margin:7px 2px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:3px}.stp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.stp .big{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.5px}.stp .big small{font-size:14px;font-weight:600;color:var(--mut);letter-spacing:0}.stp .pb{height:14px;border-radius:7px;background:var(--line);margin:10px 0 6px;overflow:hidden}.stp .pb b{display:block;height:100%;background:#5b6b86;border-radius:7px}.stp .pb.g b{background:var(--acc)}
 .inp label{font-size:11px;color:var(--mut);display:block;margin-bottom:2px}
 input,textarea,select{font:inherit;font-size:16px;color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 8px;width:100%}
 input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
@@ -374,8 +374,8 @@ function stepsOf(n) {
 }
 function stepsLine() {
   if (!S.meta.steps) return '';
-  const G = stepGoal(), t = S.meta.steps[dstr(Date.now())];
-  return `<p class="small" style="margin:6px 0 0">👟 Hoy: <b>${t == null ? '–' : t.toLocaleString('es-ES')}</b> pasos · meta ${G.toLocaleString('es-ES')}${t >= G ? ' 🎉' : ''}</p>`;
+  const G = stepGoal(), t = S.meta.steps[dstr(Date.now())], p = t == null ? 0 : Math.min(100, Math.round(t / G * 100));
+  return `<div class="stp"><div class="big">👟 ${t == null ? '–' : t.toLocaleString('es-ES')} <small>pasos hoy${t >= G ? ' 🎉' : ''}</small></div><div class="pb ${t >= G ? 'g' : ''}"><b style="width:${p}%"></b></div><p class="small mut" style="margin:0">${p}% · meta ${G.toLocaleString('es-ES')}</p></div>`;
 }
 function weekCard() {
   const ws = weekStats(), nd = PLAN.filter(d => doneThisWeek(d.id)).length;
@@ -526,7 +526,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5.1 · plan de adaptación</p>`;
   return h;
 }
 function render() {
