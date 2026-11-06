@@ -517,8 +517,21 @@ function stepsCard() {
   const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Pasos por día"><line x1="${pl}" x2="${W - pr}" y1="${gy}" y2="${gy}" stroke="#c6f432" stroke-dasharray="4 4" opacity=".6"/><text x="${W - pr}" y="${Number(gy) - 3}" text-anchor="end" font-size="9" fill="#c6f432" stroke="#171b21" stroke-width="3" paint-order="stroke">meta ${kfmt(G)}</text>${bars}</svg>`;
   return `<div class="card"><div class="row"><b>👟 Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stats"><div class="stat"><b>${avg.toLocaleString('es-ES')}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${best.toLocaleString('es-ES')}</b><span>mejor día</span></div></div></div>`;
 }
+function bwCard() {
+  const bw = S.meta.bw || {}, ks = Object.keys(bw).sort();
+  const pts = ks.map(k => ({ date: new Date(k + 'T12:00:00').getTime(), w: bw[k] })), last = pts[pts.length - 1], first = pts[0];
+  let h = `<div class="card"><b>⚖️ Peso corporal</b><div class="row" style="margin-top:8px;gap:8px"><input id="bwin" type="text" inputmode="decimal" placeholder="${last ? fmt(last.w) : 'kg'}" style="flex:1" aria-label="Peso en kg"><button class="sm" data-a="bwsave">Guardar</button></div>`;
+  if (last) {
+    h += `<p class="small" style="margin:8px 0 0">Último: <b>${fmt(last.w)} kg</b> · ${fdate(last.date)}`;
+    if (pts.length > 1) { const d = Math.round((last.w - first.w) * 10) / 10; h += ` · <b>${d > 0 ? '+' : ''}${fmt(d)} kg</b> desde el ${fdate(first.date)}`; }
+    h += `</p>`;
+    h += pts.length > 1 ? chart(pts, 'w', 'Peso corporal en kg') : `<p class="small mut" style="margin:6px 0 0">Apunta tu peso otro día para ver la gráfica.</p>`;
+    h += `<button class="sm ghost" data-a="bwdel" style="margin-top:6px">Borrar el último</button>`;
+  } else h += `<p class="small mut" style="margin:8px 0 0">Apunta tu peso (una vez por semana basta) y verás cómo evoluciona.</p>`;
+  return h + `</div>`;
+}
 function viewProgreso() {
-  let h = `<h1>Progreso</h1>${stepsCard()}<label class="small mut">Ejercicio</label><select data-x="prog">`;
+  let h = `<h1>Progreso</h1>${stepsCard()}${bwCard()}<label class="small mut">Ejercicio</label><select data-x="prog">`;
   const ks = Object.keys(EX).filter(k => !/_act$/.test(k));
   if (!ui.prog) { ui.prog = ks.find(k => exHistory(k).length) || ks[0]; }
   for (const d of PLAN) h += `<optgroup label="${esc(d.n)}">${d.ex.filter(e => !/_act$/.test(e.k)).map(e => `<option value="${e.k}" ${ui.prog === e.k ? 'selected' : ''}>${esc(e.n)}</option>`).join('')}</optgroup>`;
@@ -547,7 +560,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.6 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.6.1 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -629,6 +642,15 @@ const actions = {
       if (prev && ce > prev + 0.4 && ce > (ui.prs[key] || 0)) { ui.prs[key] = ce; toast(`🏆 ¡Récord en ${e.n}! ${fmt(x.w)} kg × ${x.r}`); clearTimeout(toast._t); toast._t = setTimeout(() => $('#toast').classList.remove('show'), 4500); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (er) {} }
     }
     startTimer(restAfter(e, i));
+  },
+  bwsave() {
+    const inp = $('#bwin'), v = Math.round(num(String(inp.value).replace(',', '.')) * 10) / 10;
+    if (!isFinite(v) || v < 20 || v > 300) { toast('Escribe tu peso en kg (20–300)'); return; }
+    S.meta.bw = S.meta.bw || {}; S.meta.bw[dstr(Date.now())] = v; Store.save('meta', false); toast('Peso guardado: ' + fmt(v) + ' kg'); render();
+  },
+  bwdel() {
+    const bw = S.meta.bw || {}, ks = Object.keys(bw).sort(), k = ks[ks.length - 1]; if (!k) return;
+    confirmBox('¿Borrar el último peso?', 'Borrar', () => { delete S.meta.bw[k]; Store.save('meta', false); closeModal(); render(); }, `${fmt(bw[k])} kg · ${fdate(new Date(k + 'T12:00:00').getTime())}`);
   },
   strange(el) { ui.stRange = +el.dataset.n; render(); },
   copyprev(el) {
