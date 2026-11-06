@@ -41,7 +41,7 @@ button:disabled{opacity:.5}
 .inp{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:6px;align-items:end}
 .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 44px}
 input.pre{color:var(--mut);font-style:italic}
-.ds{display:block;height:9px;border-radius:5px;background:var(--line);margin:7px 2px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:3px}.stp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.stp .big{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.5px}.stp .big small{font-size:14px;font-weight:600;color:var(--mut);letter-spacing:0}.stp .pb{height:14px;border-radius:7px;background:var(--line);margin:10px 0 6px;overflow:hidden}.stp .pb b{display:block;height:100%;background:#5b6b86;border-radius:7px}.stp .pb.g b{background:var(--acc)}
+.ds{display:block;height:9px;border-radius:5px;background:var(--line);margin:7px 2px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:3px}.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-left:8px}.seg button{border:0;background:none;color:var(--mut);padding:4px 12px;font:inherit;font-size:13px;font-weight:600}.seg button.on{background:var(--acc);color:#10140a}.stp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.stp .big{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.5px}.stp .big small{font-size:14px;font-weight:600;color:var(--mut);letter-spacing:0}.stp .pb{height:14px;border-radius:7px;background:var(--line);margin:10px 0 6px;overflow:hidden}.stp .pb b{display:block;height:100%;background:#5b6b86;border-radius:7px}.stp .pb.g b{background:var(--acc)}
 .inp label{font-size:11px;color:var(--mut);display:block;margin-bottom:2px}
 input,textarea,select{font:inherit;font-size:16px;color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 8px;width:100%}
 input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
@@ -498,8 +498,27 @@ function chart(pts, key, unit) {
   const ticks = [mn + pad, (mn + mx) / 2, mx - pad];
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución">${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${Y(t)}" y2="${Y(t)}" stroke="#2a3038"/><text x="2" y="${Y(t) + 3}">${fmt(Math.round(t * 10) / 10)}</text>`).join('')}<path d="${path}" fill="none" stroke="#c6f432" stroke-width="2.5"/>${pts.map((p, i) => `<circle cx="${X(i)}" cy="${Y(p[key])}" r="3.5" fill="#c6f432"/>`).join('')}<text x="${pl}" y="${H - 6}">${fdate(pts[0].date)}</text><text x="${W - pr}" y="${H - 6}" text-anchor="end">${fdate(pts[pts.length - 1].date)}</text></svg><p class="legend">${unit}</p>`;
 }
+function stepsCard() {
+  const st = S.meta.steps; if (!st || !Object.keys(st).length) return '';
+  const N = ui.stRange === 30 ? 30 : 7, G = stepGoal(), now = new Date(), days = [];
+  for (let i = N - 1; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); const v = st[dstr(d)]; days.push({ d, v: v == null ? null : v }); }
+  const have = days.filter(x => x.v != null), tot = have.reduce((a, x) => a + x.v, 0);
+  const avg = have.length ? Math.round(tot / have.length) : 0, hit = have.filter(x => x.v >= G).length, best = have.length ? Math.max(...have.map(x => x.v)) : 0;
+  const W = 320, H = 130, pl = 4, pr = 4, pt = 8, pb = 22, mx = Math.max(G, best, 1) * 1.08, bw = (W - pl - pr) / N;
+  const Y = v => pt + (1 - v / mx) * (H - pt - pb);
+  let bars = '';
+  days.forEach((x, i) => {
+    const bx = pl + i * bw + bw * .15, w = bw * .7, v = x.v || 0, isT = i === N - 1;
+    if (x.v != null) bars += `<rect x="${bx.toFixed(1)}" y="${Y(v).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(2, H - pb - Y(v)).toFixed(1)}" rx="${N === 7 ? 5 : 2}" fill="${v >= G ? '#c6f432' : '#5b6b86'}"${isT ? ' opacity=".9"' : ''}/>`;
+    else bars += `<rect x="${bx.toFixed(1)}" y="${H - pb - 2}" width="${w.toFixed(1)}" height="2" rx="1" fill="#2a3038"/>`;
+    if (N === 7 || i === 0 || i === N - 1 || (i % 7 === 0 && i < N - 4)) bars += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="${N === 7 ? 11 : 9}" fill="#8a94a3">${N === 7 ? LET[(x.d.getDay() + 6) % 7] : x.d.getDate()}</text>`;
+  });
+  const gy = Y(G).toFixed(1);
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Pasos por día"><line x1="${pl}" x2="${W - pr}" y1="${gy}" y2="${gy}" stroke="#c6f432" stroke-dasharray="4 4" opacity=".6"/><text x="${W - pr}" y="${Number(gy) - 3}" text-anchor="end" font-size="9" fill="#c6f432" stroke="#171b21" stroke-width="3" paint-order="stroke">meta ${kfmt(G)}</text>${bars}</svg>`;
+  return `<div class="card"><div class="row"><b>👟 Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stats"><div class="stat"><b>${avg.toLocaleString('es-ES')}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${best.toLocaleString('es-ES')}</b><span>mejor día</span></div></div></div>`;
+}
 function viewProgreso() {
-  let h = `<h1>Progreso</h1><label class="small mut">Ejercicio</label><select data-x="prog">`;
+  let h = `<h1>Progreso</h1>${stepsCard()}<label class="small mut">Ejercicio</label><select data-x="prog">`;
   const ks = Object.keys(EX).filter(k => !/_act$/.test(k));
   if (!ui.prog) { ui.prog = ks.find(k => exHistory(k).length) || ks[0]; }
   for (const d of PLAN) h += `<optgroup label="${esc(d.n)}">${d.ex.filter(e => !/_act$/.test(e.k)).map(e => `<option value="${e.k}" ${ui.prog === e.k ? 'selected' : ''}>${esc(e.n)}</option>`).join('')}</optgroup>`;
@@ -509,6 +528,8 @@ function viewProgreso() {
   const lastH = hist[hist.length - 1], firstH = hist[0];
   h += `<div class="card"><b>Fuerza estimada (mejor serie)</b>${chart(hist, 'e1rm', 'Estimación de 1RM en kg (fórmula de Epley) a partir de tu mejor serie de cada día. Sirve para comparar días con pesos y repeticiones distintos.')}`;
   if (hist.length > 1) { const dlt = lastH.e1rm - firstH.e1rm; h += `<p class="small">Desde el ${fdate(firstH.date)}: <b style="color:${dlt >= 0 ? 'var(--ok)' : 'var(--bad)'}">${dlt >= 0 ? '+' : ''}${fmt(Math.round(dlt * 10) / 10)} kg</b> (${fmt(Math.round(firstH.e1rm))} → ${fmt(Math.round(lastH.e1rm))})</p>`; }
+  const pr = hist.reduce((a, x) => x.e1rm > a.e1rm ? x : a, hist[0]), prSet = pr.sets.reduce((a, x) => e1rm(x.w, x.r) > e1rm(a.w, a.r) ? x : a, pr.sets[0]);
+  h += `<p class="small" style="margin:6px 0 0">🏆 Récord: <b>${fmt(prSet.w)} kg × ${prSet.r}</b> · ${fdate(pr.date)}</p>`;
   h += `</div><div class="card"><b>Primera serie de cada día</b>${chart(hist.map(x => ({ date: x.date, w: num(x.first.w) })), 'w', 'Peso en kg de la primera serie')}</div>`;
   h += `<h2>Registros</h2><table><tr><th>Fecha</th><th>Series</th></tr>${hist.slice().reverse().map(x => `<tr><td>${fdate(x.date)}</td><td>${x.sets.map(s => esc(prevText(s.sp, s))).join('<br>')}</td></tr>`).join('')}</table>`;
   return h;
@@ -526,7 +547,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5.3 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.6 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -601,8 +622,15 @@ const actions = {
     for (const inp of inputs) { const f = inp.dataset.f; if (x[f] == null && inp.dataset.sug) { const raw = inp.value !== '' ? inp.value : inp.placeholder; if (num(raw) != null) x[f] = f[0] === 'r' ? Math.round(num(raw)) : num(raw); } }
     if (sp.t !== 'act' && (x.w == null || x.r == null)) { toast('Escribe kg y repeticiones'); return; }
     x.done = true; Store.save(s.id); render();
+    if (sp.t !== 'act') {
+      let prev = 0;
+      for (const o of Object.values(S.sessions)) { if (!o.done || o.id === s.id) continue; (o.ex[e.k] || []).forEach((y, j) => { const q = e.sets[j] || {}; if (y.done && q.t !== 'act' && num(y.w) != null && y.r != null) prev = Math.max(prev, e1rm(y.w, y.r)); }); }
+      const ce = e1rm(x.w, x.r); ui.prs = ui.prs || {}; const key = s.id + e.k;
+      if (prev && ce > prev + 0.4 && ce > (ui.prs[key] || 0)) { ui.prs[key] = ce; toast(`🏆 ¡Récord en ${e.n}! ${fmt(x.w)} kg × ${x.r}`); clearTimeout(toast._t); toast._t = setTimeout(() => $('#toast').classList.remove('show'), 4500); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (er) {} }
+    }
     startTimer(restAfter(e, i));
   },
+  strange(el) { ui.stRange = +el.dataset.n; render(); },
   copyprev(el) {
     const s = cur(), k = el.dataset.k, last = lastFor(k, s.id); if (!last) return;
     s.ex[k].forEach((x, i) => { const p = last.sets[i]; if (p && !x.done) { x.w = p.w; x.r = p.r; x.w2 = p.w2; x.r2 = p.r2; } });

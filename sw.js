@@ -1,6 +1,6 @@
 // Mi Entreno: funciona sin conexión. La página se pide primero a la red (para recibir
 // actualizaciones) con un límite de 3 s; si no hay cobertura, se usa la copia guardada.
-const VERSION = 'entreno-1.5.3';
+const VERSION = 'entreno-1.6.0';
 const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
