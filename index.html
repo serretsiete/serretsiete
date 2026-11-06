@@ -41,7 +41,7 @@ button:disabled{opacity:.5}
 .inp{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:6px;align-items:end}
 .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 44px}
 input.pre{color:var(--mut);font-style:italic}
-.ds{display:block;height:9px;border-radius:5px;background:var(--line);margin:7px 2px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:3px}.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-left:8px}.seg button{border:0;background:none;color:var(--mut);padding:4px 12px;font:inherit;font-size:13px;font-weight:600}.seg button.on{background:var(--acc);color:#10140a}.stp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.stp .big{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.5px}.stp .big small{font-size:14px;font-weight:600;color:var(--mut);letter-spacing:0}.stp .pb{height:14px;border-radius:7px;background:var(--line);margin:10px 0 6px;overflow:hidden}.stp .pb b{display:block;height:100%;background:#5b6b86;border-radius:7px}.stp .pb.g b{background:var(--acc)}
+.ds{display:block;height:9px;border-radius:5px;background:var(--line);margin:7px 2px 0;overflow:hidden}.ds b{display:block;height:100%;background:#5b6b86;border-radius:3px}.ds.g b{background:var(--acc)}.dn{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:3px}.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-left:8px}.seg button{border:0;background:none;color:var(--mut);padding:4px 12px;font:inherit;font-size:13px;font-weight:600}.seg button.on{background:var(--acc);color:#10140a}.bwc{touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:crosshair;display:block}.bwro{min-height:44px;margin:8px 0 2px}.bwro b{font-size:22px}.bwro .d{font-size:13px;font-weight:600;margin-left:6px}.stp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.stp .big{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.5px}.stp .big small{font-size:14px;font-weight:600;color:var(--mut);letter-spacing:0}.stp .pb{height:14px;border-radius:7px;background:var(--line);margin:10px 0 6px;overflow:hidden}.stp .pb b{display:block;height:100%;background:#5b6b86;border-radius:7px}.stp .pb.g b{background:var(--acc)}
 .inp label{font-size:11px;color:var(--mut);display:block;margin-bottom:2px}
 input,textarea,select{font:inherit;font-size:16px;color:var(--txt);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 8px;width:100%}
 input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
@@ -534,15 +534,53 @@ function stepsCard() {
   const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Pasos por día"><line x1="${pl}" x2="${W - pr}" y1="${gy}" y2="${gy}" stroke="#c6f432" stroke-dasharray="4 4" opacity=".6"/><text x="${W - pr}" y="${Number(gy) - 3}" text-anchor="end" font-size="9" fill="#c6f432" stroke="#171b21" stroke-width="3" paint-order="stroke">meta ${kfmt(G)}</text>${bars}</svg>`;
   return `<div class="card"><div class="row"><b>👟 Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stats"><div class="stat"><b>${avg.toLocaleString('es-ES')}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${best.toLocaleString('es-ES')}</b><span>mejor día</span></div></div></div>`;
 }
+const BWF = t => new Date(t).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+function bwReadout(i) {
+  const P = ui.bwPts || [], p = P[i]; if (!p) return '';
+  const q = P[i - 1], d = q ? Math.round((p.w - q.w) * 100) / 100 : null;
+  return `<b>${fmt(p.w)} kg</b>${d == null ? '' : `<span class="d" style="color:${d > 0 ? 'var(--bad)' : d < 0 ? 'var(--ok)' : 'var(--mut)'}">${d > 0 ? '+' : ''}${fmt(d)} kg vs. anterior</span>`}<div class="small mut">${BWF(p.date)}</div>`;
+}
+function bwChart(P) {
+  ui.bwPts = P;
+  const W = 600, H = 220, pl = 40, pr = 12, pt = 12, pb = 26, ys = P.map(p => p.w);
+  let mn = Math.min(...ys), mx = Math.max(...ys); if (mx - mn < 1) { mx += .5; mn -= .5; } const pad = (mx - mn) * .12; mn -= pad; mx += pad;
+  const t0 = P[0].date, t1 = P[P.length - 1].date, span = Math.max(1, t1 - t0);
+  const X = t => pl + (t - t0) / span * (W - pl - pr), Y = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
+  const path = P.map((p, i) => `${i ? 'L' : 'M'}${X(p.date).toFixed(1)},${Y(p.w).toFixed(1)}`).join(' ');
+  const area = `${path} L${X(t1).toFixed(1)},${H - pb} L${X(t0).toFixed(1)},${H - pb} Z`;
+  const ticks = [mn + pad, (mn + mx) / 2, mx - pad];
+  const lab = [0, .33, .66, 1].map(f => { const t = t0 + span * f; return `<text x="${(pl + f * (W - pl - pr)).toFixed(1)}" y="${H - 6}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}" font-size="11" fill="#8a94a3">${new Date(t).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })}</text>`; }).join('');
+  const dots = P.length <= 24 ? P.map(p => `<circle cx="${X(p.date).toFixed(1)}" cy="${Y(p.w).toFixed(1)}" r="3" fill="#c6f432"/>`).join('') : '';
+  const li = P.length - 1;
+  return `<div class="bwro" id="bwro">${bwReadout(li)}</div><svg class="bwc" id="bwc" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del peso, desliza para ver cada semana" data-t0="${t0}" data-span="${span}" data-pl="${pl}" data-pr="${pr}" data-w="${W}">${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="#2a3038"/><text x="2" y="${(Y(t) + 4).toFixed(1)}" font-size="11" fill="#8a94a3">${fmt(Math.round(t * 10) / 10)}</text>`).join('')}<path d="${area}" fill="#c6f432" opacity=".08"/><path d="${path}" fill="none" stroke="#c6f432" stroke-width="2.5" stroke-linejoin="round"/>${dots}${lab}<line id="bwl" x1="${X(P[li].date).toFixed(1)}" x2="${X(P[li].date).toFixed(1)}" y1="${pt}" y2="${H - pb}" stroke="#fff" stroke-opacity=".5" stroke-dasharray="3 3"/><circle id="bwd" cx="${X(P[li].date).toFixed(1)}" cy="${Y(P[li].w).toFixed(1)}" r="6" fill="#c6f432" stroke="#10140a" stroke-width="2"/></svg>`;
+}
+function bwPoint(ev) {
+  const svg = ev.target.closest && ev.target.closest('#bwc'); if (!svg || !ui.bwPts) return;
+  if (ev.type === 'pointermove' && ev.pointerType === 'mouse' && !(ev.buttons & 1) && false) return;
+  const r = svg.getBoundingClientRect(), W = +svg.dataset.w, pl = +svg.dataset.pl, pr = +svg.dataset.pr, t0 = +svg.dataset.t0, span = +svg.dataset.span;
+  const x = (ev.clientX - r.left) / r.width * W, t = t0 + Math.min(1, Math.max(0, (x - pl) / (W - pl - pr))) * span;
+  const P = ui.bwPts; let bi = 0, bd = Infinity; P.forEach((p, i) => { const d = Math.abs(p.date - t); if (d < bd) { bd = d; bi = i; } });
+  if (ui.bwSel === bi) return; ui.bwSel = bi; const p = P[bi];
+  const ys = P.map(q => q.w); let mn = Math.min(...ys), mx = Math.max(...ys); if (mx - mn < 1) { mx += .5; mn -= .5; } const pad = (mx - mn) * .12; mn -= pad; mx += pad;
+  const H = 220, pt = 12, pb = 26, cx = pl + (p.date - t0) / span * (W - pl - pr), cy = pt + (1 - (p.w - mn) / (mx - mn)) * (H - pt - pb);
+  const l = svg.querySelector('#bwl'), d = svg.querySelector('#bwd'); l.setAttribute('x1', cx.toFixed(1)); l.setAttribute('x2', cx.toFixed(1)); d.setAttribute('cx', cx.toFixed(1)); d.setAttribute('cy', cy.toFixed(1));
+  $('#bwro').innerHTML = bwReadout(bi);
+  try { navigator.vibrate && navigator.vibrate(5); } catch (e) {}
+}
+function bwVisible() {
+  const bw = S.meta.bw || {}, all = Object.keys(bw).sort().map(k => ({ date: new Date(k + 'T12:00:00').getTime(), w: bw[k] }));
+  if (!all.length) return { all, vis: all };
+  const last = all[all.length - 1].date, R = ui.bwRange || 'all', days = R === '3m' ? 92 : R === '1y' ? 366 : 0;
+  const vis = days ? all.filter(p => p.date >= last - days * 864e5) : all;
+  return { all, vis: vis.length > 1 ? vis : all.slice(-2) };
+}
 function bwCard() {
-  const bw = S.meta.bw || {}, ks = Object.keys(bw).sort();
-  const pts = ks.map(k => ({ date: new Date(k + 'T12:00:00').getTime(), w: bw[k] })), last = pts[pts.length - 1], first = pts[0];
-  let h = `<div class="card"><b>⚖️ Peso corporal</b><div class="row" style="margin-top:8px;gap:8px"><input id="bwin" type="text" inputmode="decimal" placeholder="${last ? fmt(last.w) : 'kg'}" style="flex:1" aria-label="Peso en kg"><button class="sm" data-a="bwsave">Guardar</button></div>`;
+  const { all, vis } = bwVisible(), last = all[all.length - 1], first = vis[0], N = ui.bwRange || 'all';
+  ui.bwSel = vis.length - 1;
+  let h = `<div class="card"><div class="row"><b>⚖️ Peso corporal</b><span class="grow"></span>${all.length > 6 ? `<span class="seg"><button data-a="bwrange" data-n="3m" class="${N === '3m' ? 'on' : ''}">3 m</button><button data-a="bwrange" data-n="1y" class="${N === '1y' ? 'on' : ''}">1 año</button><button data-a="bwrange" data-n="all" class="${N === 'all' ? 'on' : ''}">Todo</button></span>` : ''}</div><div class="row" style="margin-top:8px;gap:8px"><input id="bwin" type="text" inputmode="decimal" placeholder="${last ? fmt(last.w) : 'kg'}" style="flex:1" aria-label="Peso en kg"><button class="sm" data-a="bwsave">Guardar</button></div>`;
   if (last) {
-    h += `<p class="small" style="margin:8px 0 0">Último: <b>${fmt(last.w)} kg</b> · ${fdate(last.date)}`;
-    if (pts.length > 1) { const d = Math.round((last.w - first.w) * 100) / 100; h += ` · <b>${d > 0 ? '+' : ''}${fmt(d)} kg</b> desde el ${fdate(first.date)}`; }
-    h += `</p>`;
-    h += pts.length > 1 ? chart(pts, 'w', 'Peso corporal en kg') : `<p class="small mut" style="margin:6px 0 0">Apunta tu peso otro día para ver la gráfica.</p>`;
+    if (vis.length > 1) { const d = Math.round((last.w - first.w) * 100) / 100; h += `<p class="small" style="margin:8px 0 0"><b style="color:${d > 0 ? 'var(--bad)' : d < 0 ? 'var(--ok)' : 'var(--mut)'}">${d > 0 ? '+' : ''}${fmt(d)} kg</b> desde el ${new Date(first.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>`; }
+    h += vis.length > 1 ? bwChart(vis) + `<p class="small mut" style="margin:2px 0 0">Desliza el dedo por la gráfica para ver cada semana.</p>` : `<p class="small" style="margin:8px 0 0">Último: <b>${fmt(last.w)} kg</b> · ${fdate(last.date)}</p><p class="small mut" style="margin:6px 0 0">Apunta tu peso otro día para ver la gráfica.</p>`;
     h += `<button class="sm ghost" data-a="bwdel" style="margin-top:6px">Borrar el último</button>`;
   } else h += `<p class="small mut" style="margin:8px 0 0">Apunta tu peso (una vez por semana basta) y verás cómo evoluciona.</p>`;
   if (!Sheets.on()) h += `<p class="small mut" style="margin:6px 0 0">Conecta Google Sheets (en Más) para guardarlo también en tu hoja privada.</p>`;
@@ -578,7 +616,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.7.1 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.8 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -670,6 +708,7 @@ const actions = {
     const bw = S.meta.bw || {}, ks = Object.keys(bw).sort(), k = ks[ks.length - 1]; if (!k) return;
     confirmBox('¿Borrar el último peso?', 'Borrar', () => { delete S.meta.bw[k]; S.meta.bwq = S.meta.bwq || {}; S.meta.bwq[k] = null; Store.save('meta', false); closeModal(); render(); Sheets.weights(); }, `${fmt(bw[k])} kg · ${fdate(new Date(k + 'T12:00:00').getTime())}`);
   },
+  bwrange(el) { ui.bwRange = el.dataset.n; render(); },
   strange(el) { ui.stRange = +el.dataset.n; render(); },
   copyprev(el) {
     const s = cur(), k = el.dataset.k, last = lastFor(k, s.id); if (!last) return;
@@ -710,6 +749,8 @@ const actions = {
   t30() { if (ui.timer) { ui.timer.end += 30000; ui.timer.buzz = false; tick(); } },
   tstop() { stopTimer(); },
 };
+document.addEventListener('pointerdown', bwPoint);
+document.addEventListener('pointermove', bwPoint);
 document.addEventListener('click', ev => {
   if (ev.target === $('#modal')) { closeModal(); return; }
   const el = ev.target.closest('[data-a]'); if (!el) return;
