@@ -346,7 +346,7 @@ const Sheets = {
     try {
       const u = new URL(this.url()); u.searchParams.set('op', 'steps');
       const j = await (await fetch(u.toString())).json();
-      if (j && j.ok && j.steps) { S.meta.steps = j.steps; Store.save('meta', false); if (ui.view === 'hoy' && $('#modal').hidden && !ui.cur) render(); }
+      if (j && j.ok && j.steps && JSON.stringify(j.steps) !== JSON.stringify(S.meta.steps)) { S.meta.steps = j.steps; Store.save('meta', false); if (ui.view === 'hoy' && $('#modal').hidden && !ui.cur) render(); }
     } catch (e) {}
   },
   async connect(code) {
@@ -526,7 +526,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5.2 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.5.3 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -698,7 +698,8 @@ document.getElementById('tabs').addEventListener('click', ev => {
   if (a && a.dataset.v === 'hoy' && ui.view === 'hoy' && ui.cur) { ev.preventDefault(); actions.leave(); }
 });
 window.addEventListener('pagehide', () => Store.flush());
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(true); } });
+setInterval(() => { if (document.visibilityState === 'visible') Sheets.steps(true); }, 30000);
 window.addEventListener('online', () => Sheets.push());
 
 (async function boot() {
