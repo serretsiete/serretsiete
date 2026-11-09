@@ -53,6 +53,29 @@ nav a{flex:1;max-width:140px;text-align:center;padding:10px 4px 8px;color:var(--
 nav a.on{color:var(--acc)}nav a span{display:block;font-size:19px}
 #timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));z-index:25;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;font-weight:700;font-variant-numeric:tabular-nums}
 #timer[hidden]{display:none}
+#kp{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;padding:12px 12px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px #0009;max-width:640px;margin:0 auto;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#kp[hidden]{display:none}
+.kph{display:flex;gap:10px;align-items:flex-start}.kph>div{flex:1;min-width:0}
+.kpn{font-size:21px;font-weight:800;line-height:1.15}.kpn.r{color:var(--red)}
+.kpx{padding:6px 12px}
+.kpfs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px;margin:10px 0}
+.kpfs.bi{grid-auto-flow:row;grid-template-columns:1fr 1fr}
+.kpf{text-align:left;padding:6px 12px;border-radius:12px}
+.kpf span{display:block;font-size:12px;color:var(--mut);font-weight:600}
+.kpf b{display:block;font-size:30px;line-height:38px;height:38px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.kpfs.bi .kpf b{font-size:24px;line-height:32px;height:32px}
+.kpf b.sug{color:var(--mut);font-style:italic;font-weight:600}
+.kpf.on{border-color:var(--acc);background:#c6f43214}.kpf.slow span{color:var(--red)}
+.kpc{display:inline-block;width:2px;height:.9em;background:var(--acc);margin-left:2px;vertical-align:-2px;animation:kpb 1s steps(1) infinite}@keyframes kpb{50%{opacity:0}}
+.kpg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpg button{font-size:26px;font-weight:700;height:54px;border-radius:12px;padding:0}
+.kpg button:active,.kpok:active{filter:brightness(1.35)}
+.kpok{display:block;width:100%;margin-top:8px;height:56px;font-size:20px;font-weight:800;background:var(--acc);color:var(--ink);border-color:var(--acc)}
+body.kpon #timer{bottom:calc(var(--kph,480px) + 8px)}
+body.kpon main{padding-bottom:var(--kph,480px)!important}
+input.kpon{outline:2px solid var(--acc);outline-offset:-1px}
+.set.kpcur{background:#c6f43210;border-radius:8px;box-shadow:0 0 0 6px #c6f43210}
+input[readonly]{caret-color:transparent;cursor:pointer}
 #timer.end{border-color:var(--acc);color:var(--acc)}
 #modal{position:fixed;inset:0;background:#000a;z-index:50;display:flex;align-items:flex-end;justify-content:center}
 #modal[hidden]{display:none}
@@ -95,6 +118,7 @@ svg text{fill:var(--mut);font-size:10px}
 <body>
 <main id="app"><p class="mut">Cargando…</p></main>
 <div id="timer" hidden></div>
+<div id="kp" hidden></div>
 <div id="modal" hidden></div>
 <div id="toast"></div>
 <nav id="tabs">
@@ -457,7 +481,7 @@ function viewSession(s) {
       h += `<div class="set ${x.done ? 'done' : ''}"><div class="slab"><span>${esc(setLabel(sp, i, e))}</span>${sp.lab && sp.t === 'bi' ? '' : ''}</div>${sp.lab && sp.t === 'bi' ? `<div class="note">${esc(sp.lab)}</div>` : ''}`;
       h += px && px.done ? `<div class="prev">Anterior (${fdate(last.s.date)}): ${esc(prevText(sp, px))}</div>` : '';
       h += hint;
-      const inp = (f, ph, lab, cls, sug, pre) => { const pf = !!pre && x[f] == null; return `<div><label class="${cls || ''}">${lab}</label><input data-f="${f}" data-k="${e.k}" data-i="${i}" ${sug ? 'data-sug="1"' : ''} ${pf ? 'data-pre="1"' : ''} class="${pf ? 'pre' : ''}" inputmode="${f[0] === 'w' ? 'decimal' : 'numeric'}" placeholder="${esc(ph)}" value="${x[f] == null ? (pf ? esc(String(ph)) : '') : esc(fmt(x[f]))}"></div>`; };
+      const inp = (f, ph, lab, cls, sug, pre) => { const pf = !!pre && x[f] == null; return `<div><label class="${cls || ''}">${lab}</label><input data-f="${f}" data-k="${e.k}" data-i="${i}" ${sug ? 'data-sug="1"' : ''} ${pf ? 'data-pre="1"' : ''} class="${pf ? 'pre' : ''}" readonly inputmode="none" placeholder="${esc(ph)}" value="${x[f] == null ? (pf ? esc(String(ph)) : '') : esc(fmt(x[f]))}"></div>`; };
       const tick = `<button class="tick ${x.done ? 'on' : ''}" data-a="tick" data-k="${e.k}" data-i="${i}" aria-label="Serie hecha">✓</button>`;
       if (sp.t === 'bi') {
         const nw = num(x.w), sW2 = !!(px && px.w2 != null) || !!nw, phW2 = px && px.w2 != null ? fmt(px.w2) : nw ? fmt(round05(nw / 2)) : 'kg', sR2 = !!(px && px.r2 != null);
@@ -577,7 +601,7 @@ function bwVisible() {
 function bwCard() {
   const { all, vis } = bwVisible(), last = all[all.length - 1], first = vis[0], N = ui.bwRange || 'all';
   ui.bwSel = vis.length - 1;
-  let h = `<div class="card"><div class="row"><b>⚖️ Peso corporal</b><span class="grow"></span>${all.length > 6 ? `<span class="seg"><button data-a="bwrange" data-n="3m" class="${N === '3m' ? 'on' : ''}">3 m</button><button data-a="bwrange" data-n="1y" class="${N === '1y' ? 'on' : ''}">1 año</button><button data-a="bwrange" data-n="all" class="${N === 'all' ? 'on' : ''}">Todo</button></span>` : ''}</div><div class="row" style="margin-top:8px;gap:8px"><input id="bwin" type="text" inputmode="decimal" placeholder="${last ? fmt(last.w) : 'kg'}" style="flex:1" aria-label="Peso en kg"><button class="sm" data-a="bwsave">Guardar</button></div>`;
+  let h = `<div class="card"><div class="row"><b>⚖️ Peso corporal</b><span class="grow"></span>${all.length > 6 ? `<span class="seg"><button data-a="bwrange" data-n="3m" class="${N === '3m' ? 'on' : ''}">3 m</button><button data-a="bwrange" data-n="1y" class="${N === '1y' ? 'on' : ''}">1 año</button><button data-a="bwrange" data-n="all" class="${N === 'all' ? 'on' : ''}">Todo</button></span>` : ''}</div><div class="row" style="margin-top:8px;gap:8px"><input id="bwin" type="text" readonly inputmode="none" placeholder="${last ? fmt(last.w) : 'kg'}" style="flex:1" aria-label="Peso en kg"><button class="sm" data-a="bwsave">Guardar</button></div>`;
   if (last) {
     if (vis.length > 1) { const d = Math.round((last.w - first.w) * 100) / 100; h += `<p class="small" style="margin:8px 0 0"><b style="color:${d > 0 ? 'var(--bad)' : d < 0 ? 'var(--ok)' : 'var(--mut)'}">${d > 0 ? '+' : ''}${fmt(d)} kg</b> desde el ${new Date(first.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>`; }
     h += vis.length > 1 ? bwChart(vis) + `<p class="small mut" style="margin:2px 0 0">Desliza el dedo por la gráfica para ver cada semana.</p>` : `<p class="small" style="margin:8px 0 0">Último: <b>${fmt(last.w)} kg</b> · ${fdate(last.date)}</p><p class="small mut" style="margin:6px 0 0">Apunta tu peso otro día para ver la gráfica.</p>`;
@@ -616,13 +640,13 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.8 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 1.9 · plan de adaptación</p>`;
   return h;
 }
 function render() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.v === ui.view));
   $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : viewHoy();
-  histSync();
+  histSync(); kpSync();
 }
 function openModal(h) { const m = $('#modal'); const was = !m.hidden; m.innerHTML = `<div class="sheet">${h}</div>`; m.hidden = false; if (!was) { try { history.pushState({ m: 1, s: ui.cur ? 1 : 0 }, ''); } catch (e) {} } }
 function closeModal() { const m = $('#modal'), was = !m.hidden; m.hidden = true; m.innerHTML = ''; ui.confirm = null; if (was && history.state && history.state.m) goBack(); }
@@ -753,6 +777,9 @@ document.addEventListener('pointerdown', bwPoint);
 document.addEventListener('pointermove', bwPoint);
 document.addEventListener('click', ev => {
   if (ev.target === $('#modal')) { closeModal(); return; }
+  const fi = ev.target.closest('input[data-f]');
+  if (fi && cur()) { ev.preventDefault(); fi.blur(); kpGo(fi.dataset.k, +fi.dataset.i, fi.dataset.f); return; }
+  if (ev.target.id === 'bwin') { ev.preventDefault(); ev.target.blur(); kpBw(); return; }
   const el = ev.target.closest('[data-a]'); if (!el) return;
   const f = actions[el.dataset.a]; if (f) { ev.preventDefault(); f(el); }
 });
@@ -782,6 +809,110 @@ document.addEventListener('input', ev => {
   const el = ev.target, s = cur(); if (!s) return;
   if (el.dataset.f) { const x = s.ex[el.dataset.k][+el.dataset.i]; x[el.dataset.f] = num(el.value); el.classList.remove('pre'); delete el.dataset.pre; Store.save(s.id); }
   else if (el.dataset.x === 'notes') { s.notes = el.value; Store.save(s.id); }
+});
+/* ================= Teclado numérico propio (sin abrir el teclado del iPhone) ================= */
+const KP_LAB = { w: 'kg', r: 'reps', w2: 'kg lenta', r2: 'reps lentas' };
+const kpFields = sp => sp.t === 'bi' ? ['w', 'r', 'w2', 'r2'] : ['w', 'r'];
+function kpEl(k = ui.kp, f = k.f) { return k.mode === 'bw' ? $('#bwin') : document.querySelector(`input[data-f="${f}"][data-k="${k.k}"][data-i="${k.i}"]`); }
+// Valor que se ve en una casilla: lo apuntado, o la sugerencia (gris) si aún no has apuntado nada
+function kpVal(f) {
+  const k = ui.kp, el = kpEl(k, f);
+  if (k.mode === 'bw') return el && el.value !== '' ? { v: el.value, sug: false } : { v: el && num(el.placeholder) != null ? el.placeholder : '', sug: true };
+  const x = cur().ex[k.k][k.i];
+  if (x[f] != null) return { v: fmt(x[f]), sug: false };
+  if (!el) return { v: '', sug: true };
+  if (el.value !== '') return { v: el.value, sug: true };
+  return { v: el.dataset.sug && num(el.placeholder) != null ? el.placeholder : '', sug: true };
+}
+function kpDraw() {
+  const k = ui.kp, box = $('#kp'); if (!k) return;
+  let head, F, okLab;
+  if (k.mode === 'bw') { head = `<div class="kpn">⚖️ Peso de hoy</div><div class="small mut">${fdate(Date.now())}</div>`; F = ['w']; okLab = 'Guardar'; }
+  else {
+    const s = cur(), e = EX[k.k], sp = e.sets[k.i], last = lastFor(e.k, s.id), px = last && last.sets[k.i];
+    F = kpFields(sp);
+    head = `<div class="kpn ${RED.has(e.k) ? 'r' : ''}">${esc(e.n)}</div><div class="small mut">${esc(setLabel(sp, k.i, e))} · ${k.i + 1} de ${e.sets.length}</div>${px && px.done ? `<div class="small mut">Anterior: ${esc(prevText(sp, px))}</div>` : ''}`;
+    okLab = F.indexOf(k.f) < F.length - 1 ? `OK → ${KP_LAB[F[F.indexOf(k.f) + 1]]}` : (s.ex[k.k][k.i].done ? 'OK → siguiente' : 'OK ✓ serie hecha');
+  }
+  const chips = F.map(f => {
+    const on = f === k.f, cv = kpVal(f);
+    const body = on && k.typed ? `${esc(k.buf)}<i class="kpc"></i>` : `${esc(cv.v) || (on ? '' : '–')}${on ? '<i class="kpc"></i>' : ''}`;
+    return `<button class="kpf ${on ? 'on' : ''} ${f.endsWith('2') ? 'slow' : ''}" data-a="kpfield" data-f="${f}"><span>${KP_LAB[f]}</span><b class="${!(on && k.typed) && cv.sug ? 'sug' : ''}">${body}</b></button>`;
+  }).join('');
+  const noComma = k.f[0] === 'r';
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'].map(d => `<button data-a="kpkey" data-d="${d}" ${d === ',' && noComma ? 'disabled' : ''} aria-label="${d === '⌫' ? 'Borrar' : d}">${d}</button>`).join('');
+  box.innerHTML = `<div class="kph"><div>${head}</div><button class="kpx sm ghost" data-a="kpclose" aria-label="Cerrar teclado">✕</button></div><div class="kpfs ${F.length > 2 ? 'bi' : ''}">${chips}</div><div class="kpg">${keys}</div><button class="kpok" data-a="kpok">${okLab}</button>`;
+  box.hidden = false; document.body.classList.add('kpon');
+  document.documentElement.style.setProperty('--kph', box.offsetHeight + 'px');
+}
+function kpMark() {
+  document.querySelectorAll('input.kpon').forEach(x => x.classList.remove('kpon'));
+  document.querySelectorAll('.set.kpcur').forEach(x => x.classList.remove('kpcur'));
+  const k = ui.kp; if (!k) return; const el = kpEl(); if (!el) return;
+  el.classList.add('kpon'); const st = el.closest('.set'); if (st) st.classList.add('kpcur');
+}
+function kpScroll() {
+  const el = kpEl(); if (!el) return; const box = (el.closest('.set') || el), r = box.getBoundingClientRect(), kh = $('#kp').offsetHeight;
+  const room = innerHeight - kh, want = Math.max(12, (room - r.height) / 3);
+  if (r.top < 8 || r.bottom > room - 8 || Math.abs(r.top - want) > room / 2) scrollBy({ top: r.top - want, behavior: 'smooth' });
+}
+function kpGo(k, i, f) { ui.kp = { mode: 'set', k, i, f, buf: '', typed: false }; kpDraw(); kpMark(); kpScroll(); }
+function kpBw() { ui.kp = { mode: 'bw', f: 'w', buf: '', typed: false }; kpDraw(); kpMark(); kpScroll(); }
+function kpClose() { ui.kp = null; const b = $('#kp'); b.hidden = true; b.innerHTML = ''; document.body.classList.remove('kpon'); kpMark(); }
+function kpSync() {
+  const k = ui.kp; if (!k) return;
+  if (k.mode === 'set' ? !(ui.view === 'hoy' && cur() && EX[k.k] && cur().ex[k.k]) : ui.view !== 'progreso') { kpClose(); return; }
+  kpMark();
+}
+// Escribe lo tecleado en la serie (se guarda al momento, como antes)
+function kpWrite() {
+  const k = ui.kp, el = kpEl();
+  if (k.mode === 'bw') { if (el) el.value = k.buf; return; }
+  const s = cur(), x = s.ex[k.k][k.i], v = num(k.buf);
+  x[k.f] = v == null ? null : k.f[0] === 'r' ? Math.round(v) : v; Store.save(s.id);
+  if (el) { el.value = k.buf; el.classList.remove('pre'); delete el.dataset.pre; }
+}
+// Al salir de una casilla: si no tecleaste nada, acepta la sugerencia; y recalcula las sugerencias que dependen de ella
+function kpCommit() {
+  const k = ui.kp; if (!k || k.mode === 'bw') return;
+  const s = cur(), x = s.ex[k.k][k.i], el = kpEl();
+  if (!k.typed && x[k.f] == null) { const cv = kpVal(k.f), v = num(cv.v); if (v != null) { k.buf = fmt(k.f[0] === 'r' ? Math.round(v) : v); kpWrite(); } }
+  if (el) el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function kpNext(k, i) {
+  const s = cur(), L = DAY[s.day].ex, a = L.findIndex(e => e.k === k), order = [];
+  for (let j = i + 1; j < L[a].sets.length; j++) order.push([k, j]);
+  for (let n = 1; n <= L.length; n++) { const e = L[(a + n) % L.length]; e.sets.forEach((_, j) => { if (!(e.k === k && j >= i)) order.push([e.k, j]); }); }
+  const hit = order.find(([kk, j]) => !(s.ex[kk] && s.ex[kk][j] && s.ex[kk][j].done));
+  return hit ? { k: hit[0], i: hit[1] } : null;
+}
+Object.assign(actions, {
+  kpkey(el) {
+    const k = ui.kp, d = el.dataset.d; if (!k) return;
+    if (d === '⌫') { if (!k.typed) { k.typed = true; k.buf = kpVal(k.f).sug ? '' : kpVal(k.f).v; } k.buf = k.buf.slice(0, -1); }
+    else {
+      if (!k.typed) { k.typed = true; k.buf = ''; }
+      if (d === ',') { if (k.f[0] === 'r' || k.buf.includes(',')) return; k.buf = (k.buf || '0') + ','; }
+      else {
+        const [a, b] = k.buf.split(',');
+        if (b != null ? b.length >= 2 : (a.length >= (k.f[0] === 'r' ? 3 : 3))) return;
+        k.buf = k.buf === '0' ? d : k.buf + d;
+      }
+    }
+    kpWrite(); kpDraw();
+  },
+  kpfield(el) { const k = ui.kp; if (!k || k.mode === 'bw' || el.dataset.f === k.f) return; kpCommit(); kpGo(k.k, k.i, el.dataset.f); },
+  kpclose() { kpCommit(); kpClose(); Store.flush(); },
+  kpok() {
+    const k = ui.kp; if (!k) return;
+    if (k.mode === 'bw') { const el = $('#bwin'); if (!k.typed && el && el.value === '' && num(el.placeholder) != null) el.value = el.placeholder; kpClose(); actions.bwsave(); return; }
+    kpCommit();
+    const s = cur(), e = EX[k.k], sp = e.sets[k.i], x = s.ex[k.k][k.i], F = kpFields(sp), j = F.indexOf(k.f);
+    if (j < F.length - 1) { kpGo(k.k, k.i, F[j + 1]); return; }
+    if (!x.done) { const t = document.querySelector(`button.tick[data-k="${k.k}"][data-i="${k.i}"]`); if (t) actions.tick(t); if (!x.done) { kpGo(k.k, k.i, x.w == null ? 'w' : 'r'); return; } }
+    const nx = kpNext(k.k, k.i);
+    if (nx) kpGo(nx.k, nx.i, 'w'); else { kpClose(); toast('¡Todas las series hechas! Pulsa «Terminar entreno» 💪'); }
+  },
 });
 const VIEWS = ['hoy', 'historial', 'progreso', 'mas'];
 function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); if (ui.view === 'progreso') Sheets.weights(); }
