@@ -1,12 +1,12 @@
 // Mi Entreno: funciona sin conexión. La página se pide primero a la red (para recibir
 // actualizaciones) con un límite de 3 s; si no hay cobertura, se usa la copia guardada.
-const VERSION = 'entreno-2.5.0';
+const VERSION = 'entreno-3.2.0';
 const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './inter.woff2'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION && k !== 'entreno-fotos').map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 function timeout(ms) { return new Promise(r => setTimeout(r, ms)); }
 self.addEventListener('fetch', e => {
@@ -22,6 +22,17 @@ self.addEventListener('fetch', e => {
       if (!cached) return net;
       return Promise.race([net.catch(() => cached), timeout(3000).then(() => cached)]);
     })());
+    return;
+  }
+  // Fotos de Unsplash: se guardan la primera vez para verlas sin conexión
+  if (url.hostname === 'images.unsplash.com') {
+    e.respondWith(caches.open('entreno-fotos').then(async cache => {
+      const hit = await cache.match(req);
+      if (hit) return hit;
+      const r = await fetch(req);
+      if (r.ok || r.type === 'opaque') cache.put(req, r.clone());
+      return r;
+    }));
     return;
   }
   // Fuentes y archivos propios: primero la caché
