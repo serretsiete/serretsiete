@@ -58,6 +58,8 @@ nav a.on{color:var(--acc)}nav a span{display:block;font-size:19px}
 #timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));z-index:25;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;font-weight:700;font-variant-numeric:tabular-nums}
 #timer[hidden]{display:none}
 #timer span{white-space:nowrap}
+.stro{text-align:center;font-size:15px;margin:2px 0 8px;min-height:20px}.stro b{font-size:18px;color:#fff}
+#stc .stb{transition:opacity .15s}#stc:has(.stb.sel) .stb:not(.sel){opacity:.45}
 .seg{display:flex;gap:6px;background:#111214;border:1px solid var(--line);border-radius:14px;padding:4px;margin:10px 0}.seg button{flex:1;border:0;background:none;padding:10px 6px;font-weight:700;border-radius:10px}.seg button.on{background:#fff;color:#000}
 .dtot{display:flex;gap:16px;align-items:center}.dk{text-align:center;min-width:92px}.dk b{display:block;font-family:Disp,sans-serif;font-size:40px;line-height:1;color:#fff}.dk span{font-size:11px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
 .dbars{flex:1;display:grid;gap:8px}.dbar .row{gap:4px;font-size:13px}.dbar i{display:block;height:6px;border-radius:3px;background:#24262a;margin-top:3px;overflow:hidden}.dbar i b{display:block;height:100%;border-radius:3px}
@@ -624,6 +626,19 @@ function chart(pts, key, unit) {
   const ticks = [mn + pad, (mn + mx) / 2, mx - pad];
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución">${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${Y(t)}" y2="${Y(t)}" stroke="#2a3038"/><text x="2" y="${Y(t) + 3}">${fmt(Math.round(t * 10) / 10)}</text>`).join('')}<path d="${path}" fill="none" stroke="#c6f432" stroke-width="2.5"/>${pts.map((p, i) => `<circle cx="${X(i)}" cy="${Y(p[key])}" r="3.5" fill="#c6f432"/>`).join('')}<text x="${pl}" y="${H - 6}">${fdate(pts[0].date)}</text><text x="${W - pr}" y="${H - 6}" text-anchor="end">${fdate(pts[pts.length - 1].date)}</text></svg><p class="legend">${unit}</p>`;
 }
+function stReadout(i) {
+  const x = (ui.stDays || [])[i]; if (!x) return '';
+  const dd = x.d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' }), G = stepGoal();
+  return x.v == null ? `<span class="mut">${dd} · sin datos</span>` : `<b>${x.v.toLocaleString('es-ES')}</b> pasos <span class="mut">· ${dd}</span>${x.v >= G ? ' <span style="color:var(--acc)">✓ meta</span>' : ` <span class="mut">· faltaron ${(G - x.v).toLocaleString('es-ES')}</span>`}`;
+}
+function stPoint(ev) {
+  const sv = ev.target.closest && ev.target.closest('#stc'); if (!sv || !ui.stGeo) return;
+  const r = sv.getBoundingClientRect(), g = ui.stGeo, x = (ev.clientX - r.left) / r.width * g.W;
+  const i = Math.max(0, Math.min(g.N - 1, Math.floor((x - g.pl) / ((g.W - g.pl - g.pr) / g.N))));
+  ui.stSel = i; const ro = document.getElementById('stro'); if (ro) ro.innerHTML = stReadout(i);
+  sv.querySelectorAll('.stb').forEach(b => b.classList.toggle('sel', +b.dataset.i === i));
+}
+document.addEventListener('pointerdown', stPoint); document.addEventListener('pointermove', stPoint);
 function stepsCard() {
   const st = S.meta.steps; if (!st || !Object.keys(st).length) return '';
   const N = ui.stRange === 30 ? 30 : 7, G = stepGoal(), now = new Date(), days = [];
@@ -632,16 +647,17 @@ function stepsCard() {
   const avg = have.length ? Math.round(tot / have.length) : 0, hit = have.filter(x => x.v >= G).length, best = have.length ? Math.max(...have.map(x => x.v)) : 0;
   const W = 320, H = 130, pl = 4, pr = 4, pt = 8, pb = 22, mx = Math.max(G, best, 1) * 1.08, bw = (W - pl - pr) / N;
   const Y = v => pt + (1 - v / mx) * (H - pt - pb);
+  ui.stDays = days; ui.stGeo = { W, pl, pr, N };
   let bars = '';
   days.forEach((x, i) => {
     const bx = pl + i * bw + bw * .15, w = bw * .7, v = x.v || 0, isT = i === N - 1;
-    if (x.v != null) bars += `<rect x="${bx.toFixed(1)}" y="${Y(v).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(2, H - pb - Y(v)).toFixed(1)}" rx="${N === 7 ? 5 : 2}" fill="${v >= G ? '#c6f432' : '#5b6b86'}"${isT ? ' opacity=".9"' : ''}/>`;
+    if (x.v != null) { bars += `<rect class="stb" data-i="${i}" x="${bx.toFixed(1)}" y="${Y(v).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(2, H - pb - Y(v)).toFixed(1)}" rx="${N === 7 ? 5 : 2}" fill="${v >= G ? '#c6f432' : '#5b6b86'}"${isT ? ' opacity=".9"' : ''}/>`; if (N === 7) bars += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${(Y(v) - 4).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#e9edf2">${kfmt(v)}</text>`; }
     else bars += `<rect x="${bx.toFixed(1)}" y="${H - pb - 2}" width="${w.toFixed(1)}" height="2" rx="1" fill="#2a3038"/>`;
     if (N === 7 || i === 0 || i === N - 1 || (i % 7 === 0 && i < N - 4)) bars += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="${N === 7 ? 11 : 9}" fill="#8a94a3">${N === 7 ? LET[(x.d.getDay() + 6) % 7] : x.d.getDate()}</text>`;
   });
   const gy = Y(G).toFixed(1);
-  const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Pasos por día"><line x1="${pl}" x2="${W - pr}" y1="${gy}" y2="${gy}" stroke="#c6f432" stroke-dasharray="4 4" opacity=".6"/><text x="${W - pr}" y="${Number(gy) - 3}" text-anchor="end" font-size="9" fill="#c6f432" stroke="#171b21" stroke-width="3" paint-order="stroke">meta ${kfmt(G)}</text>${bars}</svg>`;
-  return `<div class="card"><div class="row"><b>👟 Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stats"><div class="stat"><b>${avg.toLocaleString('es-ES')}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${best.toLocaleString('es-ES')}</b><span>mejor día</span></div></div></div>`;
+  const svg = `<svg id="stc" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Pasos por día" style="touch-action:pan-y"><line x1="${pl}" x2="${W - pr}" y1="${gy}" y2="${gy}" stroke="#c6f432" stroke-dasharray="4 4" opacity=".6"/><text x="${W - pr}" y="${Number(gy) - 3}" text-anchor="end" font-size="9" fill="#c6f432" stroke="#171b21" stroke-width="3" paint-order="stroke">meta ${kfmt(G)}</text>${bars}</svg>`;
+  return `<div class="card"><div class="row"><b>👟 Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stro" id="stro">${stReadout(ui.stSel != null && ui.stSel < N ? ui.stSel : (() => { for (let k = N - 1; k >= 0; k--) if (days[k].v != null) return k; return N - 1; })())}</div><div class="stats"><div class="stat"><b>${avg.toLocaleString('es-ES')}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${best.toLocaleString('es-ES')}</b><span>mejor día</span></div></div></div>`;
 }
 const BWF = t => new Date(t).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 function bwReadout(i) {
@@ -749,7 +765,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 2.3 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 2.4 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -875,7 +891,7 @@ const actions = {
     confirmBox('¿Borrar el último peso?', 'Borrar', () => { delete S.meta.bw[k]; S.meta.bwq = S.meta.bwq || {}; S.meta.bwq[k] = null; Store.save('meta', false); closeModal(); render(); Sheets.weights(); }, `${fmt(bw[k])} kg · ${fdate(new Date(k + 'T12:00:00').getTime())}`);
   },
   bwrange(el) { ui.bwRange = el.dataset.n; render(); },
-  strange(el) { ui.stRange = +el.dataset.n; render(); },
+  strange(el) { ui.stSel = null; ui.stRange = +el.dataset.n; render(); },
   copyprev(el) {
     const s = cur(), k = el.dataset.k, last = lastFor(k, s.id); if (!last) return;
     s.ex[k].forEach((x, i) => { const p = last.sets[i]; if (p && !x.done) { x.w = p.w; x.r = p.r; x.w2 = p.w2; x.r2 = p.r2; } });
