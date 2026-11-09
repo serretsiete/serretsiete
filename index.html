@@ -269,11 +269,11 @@ h2:not(.hd){text-transform:none;font-weight:600;font-size:17px;letter-spacing:-.
 .hero2.ph .cap,.hero2.ph .sub{color:#e0e0e0}
 /* cabecera del ejercicio */
 .media{position:relative;margin:0 -12px 6px;min-height:170px;padding:18px 16px 16px;display:flex;flex-direction:column;justify-content:flex-end;background:linear-gradient(180deg,#1b1b1b 0%,#0a0a0a 100%)}
-.media.ph{background-image:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.45) 50%,rgba(0,0,0,.95) 100%),var(--img);min-height:260px}
+.media.ph{background-image:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.45) 50%,rgba(0,0,0,.95) 100%),var(--img);min-height:300px;background-position:center 30%}
 .media .cap{color:#cfcfcf}
 .media .mph{position:absolute;top:10px;right:12px}
 .media .mph svg{width:17px;height:17px}
-body.kpon .media,body.kpon .media.ph{min-height:0;padding-top:10px;padding-bottom:10px}body.kpon .media .note,body.kpon .media .mrow{display:none}body.kpon .media .mt{font-size:20px}
+
 .ex.pl .exh{display:none}
 .mt{font-size:26px;font-weight:800;text-transform:uppercase;letter-spacing:-.5px;line-height:1.05;color:#fff;margin:4px 0 6px}
 .bichip{display:inline-block;background:#3a1717;color:#ff8c8c;border-radius:999px;font-size:11px;font-weight:700;padding:3px 9px;margin-right:6px;vertical-align:3px;letter-spacing:.3px}
@@ -328,6 +328,9 @@ nav a.on{color:var(--acc)}
 .tb .swp .cs{font-size:12px;font-weight:600;opacity:.75;margin-left:1px}
 .pillb{background:#fff;color:#000;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;white-space:nowrap}
 .tb{grid-template-columns:1fr auto 1fr}.tb .tbl{justify-content:flex-start}
+.stick{position:sticky;top:0;z-index:8;background:#000;margin:0 -12px;padding:calc(4px + env(safe-area-inset-top)) 12px 2px}
+.stick .plbar{margin-bottom:10px}
+main:has(.stick){padding-top:0}
 </style>
 </head>
 <body>
@@ -699,7 +702,7 @@ function viewPlayer(s) {
   const d = DAY[s.day], L = d.ex, n = L.length;
   if (ui.sx == null) { const j = L.findIndex(e => !exDone(s, e)); ui.sx = j < 0 ? n : j; }
   ui.sx = Math.max(0, Math.min(n, ui.sx));
-  let h = `<header class="tb"><span class="tbl"><button class="ib" data-a="leave" aria-label="Salir">${IC.close}</button></span>${swPill()}<span class="tbr"><button class="ib" data-a="plist" aria-label="Ver todos los ejercicios">${IC.list}</button></span></header><div class="plbar">${L.map((e, j) => `<i class="${j === ui.sx ? 'c' : exDone(s, e) ? 'd' : ''}"></i>`).join('')}</div>${clkHtml()}`;
+  let h = `<div class="stick"><header class="tb"><span class="tbl"><button class="ib" data-a="leave" aria-label="Salir">${IC.close}</button></span>${swPill()}<span class="tbr"><button class="ib" data-a="plist" aria-label="Ver todos los ejercicios">${IC.list}</button></span></header><div class="plbar">${L.map((e, j) => `<i class="${j === ui.sx ? 'c' : exDone(s, e) ? 'd' : ''}"></i>`).join('')}</div></div>${clkHtml()}`;
   if (ui.sx === n) {
     const total = L.reduce((a, e) => a + e.sets.length, 0), hechas = L.reduce((a, e) => a + (s.ex[e.k] || []).filter(x => x.done).length, 0);
     h += `<div class="plend"><div class="plk">Último paso · ${hechas} de ${total} series</div><h1>¡Casi está!</h1>${extrasHtml(s)}<button class="pri block" data-a="finish" style="padding:16px">Terminar entreno</button><div class="plnav"><button data-a="plgo" data-n="-1">‹ Ejercicio anterior</button></div><button class="block ghost danger" data-a="discard">Descartar este entreno</button></div>`;
@@ -713,7 +716,7 @@ function viewPlayer(s) {
 function viewSessionList(s) {
   const d = DAY[s.day];
   const total = d.ex.reduce((a, e) => a + e.sets.length, 0), hechas = d.ex.reduce((a, e) => a + (s.ex[e.k] || []).filter(x => x.done).length, 0);
-  let h = `<header class="tb"><span class="tbl"><button class="ib" data-a="leave" aria-label="Salir">${IC.close}</button></span>${swPill()}<span class="tbr">${ui.list === 1 ? '' : `<button class="pillb" data-a="plist">Modo grande</button>`}</span></header><p class="cap">${hechas} de ${total} series</p><h1 class="hd">${esc((d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, ''))}</h1>${clkHtml()}<div class="bar ${hechas >= total ? 'g' : ''}"><b style="width:${Math.round(hechas / total * 100)}%"></b></div>`;
+  let h = `<div class="stick"><header class="tb"><span class="tbl"><button class="ib" data-a="leave" aria-label="Salir">${IC.close}</button></span>${swPill()}<span class="tbr">${ui.list === 1 ? '' : `<button class="pillb" data-a="plist">Modo grande</button>`}</span></header></div><p class="cap">${hechas} de ${total} series</p><h1 class="hd">${esc((d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, ''))}</h1>${clkHtml()}<div class="bar ${hechas >= total ? 'g' : ''}"><b style="width:${Math.round(hechas / total * 100)}%"></b></div>`;
   h += `<p class="small mut">Haz al menos una serie de aproximación por ejercicio. Descanso 2' salvo indicación. Rojo = biserie (la parte lenta con la mitad del peso).</p>`;
   d.ex.forEach(e => { h += exHtml(s, e, ''); });
   h += extrasHtml(s);
@@ -971,13 +974,13 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.5 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.6 · plan de adaptación</p>`;
   return h;
 }
 function render() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.v === ui.view));
   $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : ui.view === 'dieta' ? viewDieta() : viewHoy();
-  histSync(); kpSync(); kpAuto(); clkTick();
+  histSync(); kpSync(); clkTick();
 }
 function openModal(h, cls) { const m = $('#modal'); const was = !m.hidden; m.innerHTML = `<div class="sheet ${cls || ''}">${h}</div>`; m.hidden = false; if (!was) { try { history.pushState({ m: 1, s: ui.cur ? 1 : 0 }, ''); } catch (e) {} } }
 function closeModal() { const m = $('#modal'), was = !m.hidden; m.hidden = true; m.innerHTML = ''; ui.confirm = null; if (was && history.state && history.state.m) goBack(); }
@@ -1228,7 +1231,7 @@ function kpMark() {
 }
 function kpScroll() {
   const el = kpEl(); if (!el) return; const box = (el.closest('.set') || el), r = box.getBoundingClientRect(), kh = $('#kp').offsetHeight;
-  const ch = ($('.clk') || { offsetHeight: 0 }).offsetHeight, room = innerHeight - kh, want = Math.max(12 + ch, (room - r.height) / 3);
+  const ch = ($('.stick') || { offsetHeight: 0 }).offsetHeight, room = innerHeight - kh, want = Math.max(12 + ch, (room - r.height) / 3);
   if (r.top < 8 + ch) { try { scrollBy({ top: r.top - want, behavior: 'smooth' }); } catch (e) {} return; }
   if (r.top < 8 || r.bottom > room - 8 || Math.abs(r.top - want) > room / 2) { try { scrollBy({ top: r.top - want, behavior: 'smooth' }); } catch (e) {} }
 }
@@ -1245,13 +1248,6 @@ function kpSync() {
   const k = ui.kp; if (!k) return;
   if (k.mode === 'set' ? !(ui.view === 'hoy' && cur() && EX[k.k] && cur().ex[k.k]) : ui.view !== 'progreso') { kpClose(); return; }
   kpMark(); const key = k.mode + ':' + k.k + ':' + k.i + ':' + k.f; if (key !== ui.kpLastScroll) { ui.kpLastScroll = key; requestAnimationFrame(() => kpScroll()); }
-}
-// En modo «uno a uno» el teclado se abre solo en la primera serie pendiente del ejercicio
-function kpAuto() {
-  if (ui.kp || ui.kpHide || !isPlayer()) return;
-  const s = cur(), e = DAY[s.day].ex[ui.sx]; if (!e) return;
-  const i = (s.ex[e.k] || []).findIndex(x => !x.done); if (i < 0) return;
-  setTimeout(() => { if (!ui.kp && isPlayer() && DAY[cur().day].ex[ui.sx] === e) kpGo(e.k, i, 'w'); }, 0);
 }
 // Escribe lo tecleado en la serie (se guarda al momento, como antes)
 function kpWrite() {
