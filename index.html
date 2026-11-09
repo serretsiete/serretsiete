@@ -57,7 +57,13 @@ nav a{flex:1;max-width:140px;text-align:center;padding:10px 4px 8px;color:var(--
 nav a.on{color:var(--acc)}nav a span{display:block;font-size:19px}
 #timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));z-index:25;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;font-weight:700;font-variant-numeric:tabular-nums}
 #timer[hidden]{display:none}
-#timer span{white-space:nowrap}#timer small{font-weight:600}
+#timer span{white-space:nowrap}
+.seg{display:flex;gap:6px;background:#111214;border:1px solid var(--line);border-radius:14px;padding:4px;margin:10px 0}.seg button{flex:1;border:0;background:none;padding:10px 6px;font-weight:700;border-radius:10px}.seg button.on{background:#fff;color:#000}
+.dtot{display:flex;gap:16px;align-items:center}.dk{text-align:center;min-width:92px}.dk b{display:block;font-family:Disp,sans-serif;font-size:40px;line-height:1;color:#fff}.dk span{font-size:11px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase;font-weight:700}
+.dbars{flex:1;display:grid;gap:8px}.dbar .row{gap:4px;font-size:13px}.dbar i{display:block;height:6px;border-radius:3px;background:#24262a;margin-top:3px;overflow:hidden}.dbar i b{display:block;height:100%;border-radius:3px}
+.meal .mn{font-size:20px;color:#fff}.meal .mk{font-weight:700;font-size:14px}.meal ul{margin:8px 0 6px;padding-left:18px}.meal li{margin:3px 0}.meal li.off{opacity:.4;text-decoration:line-through}.meal .alt{display:block;font-size:12px;color:var(--mut);text-decoration:none}
+.mm{display:flex;gap:12px;font-size:12px;color:var(--mut);font-weight:600}.mm i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+details.card summary{cursor:pointer}details.card ul{padding-left:18px;margin:8px 0 0}details.card li{margin:4px 0}#timer small{font-weight:600}
 .clk{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:calc(8px - env(safe-area-inset-top)) -12px 2px;padding:calc(6px + env(safe-area-inset-top)) 12px 6px;position:sticky;top:0;z-index:6;background:#000}
 .clk>div{background:#111214;border:1px solid var(--line);border-radius:12px;padding:6px 12px}
 .clk span{display:block;font-size:11px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -168,6 +174,7 @@ svg text{fill:var(--mut);font-size:10px}
   <a href="#hoy" data-v="hoy"><span>🏋️</span>Entreno</a>
   <a href="#historial" data-v="historial"><span>🗓️</span>Historial</a>
   <a href="#progreso" data-v="progreso"><span>📈</span>Progreso</a>
+  <a href="#dieta" data-v="dieta"><span>🥗</span>Dieta</a>
   <a href="#mas" data-v="mas"><span>⚙️</span>Más</a>
 </nav>
 <script>
@@ -406,6 +413,15 @@ const Sheets = {
   async list() {
     const u = new URL(this.url()); u.searchParams.set('op', 'list');
     const r = await fetch(u.toString()); const j = await r.json(); if (!j.ok) throw new Error(j.error || 'error'); return j.sessions || [];
+  },
+  // La dieta vive en tu Google Sheet (pestaña «Dieta»), nunca en el código público
+  async diet() {
+    if (!this.on() || navigator.onLine === false || this.dBusy) return; this.dBusy = true;
+    try {
+      const u = new URL(this.url()); u.searchParams.set('op', 'diet');
+      const j = await (await fetch(u.toString())).json();
+      if (j && j.ok && j.diet && JSON.stringify(j.diet) !== JSON.stringify(S.meta.diet || null)) { S.meta.diet = j.diet; Store.save('meta', false); if (ui.view === 'dieta' && $('#modal').hidden) render(); }
+    } catch (e) {} finally { this.dBusy = false; }
   },
   async weights() {
     if (!this.on() || navigator.onLine === false || this.wBusy) return; this.wBusy = true;
@@ -696,6 +712,30 @@ function viewProgreso() {
   h += `<h2>Registros</h2><table><tr><th>Fecha</th><th>Series</th></tr>${hist.slice().reverse().map(x => `<tr><td>${fdate(x.date)}</td><td>${x.sets.map(s => esc(prevText(s.sp, s))).join('<br>')}</td></tr>`).join('')}</table>`;
   return h;
 }
+/* ================= Dieta ================= */
+const MAC = [['p', 'Proteína', '#5ab0ff', 4], ['c', 'Carbos', '#c6f432', 4], ['g', 'Grasa', '#ffb020', 9]];
+function dietOn(x, train) { return !(x.only === 'train' && !train); }
+function dietSum(list, train) { const t = [0, 0, 0]; list.forEach(x => { if (x.m && dietOn(x, train)) x.m.forEach((v, j) => t[j] += v); }); return t; }
+const kcalOf = t => Math.round(t[0] * 4 + t[1] * 4 + t[2] * 9);
+function viewDieta() {
+  const D = S.meta.diet;
+  if (!D) return `<h1>Dieta</h1><div class="card"><p>${Sheets.on() ? 'Cargando tu dieta desde tu hoja de Google…' : 'Conecta tu hoja de Google en <b>Más</b> para ver aquí tu dieta.'}</p></div>`;
+  const dow = new Date().getDay(), doneToday = sessionsSorted().some(x => x.done && dstr(x.date) === dstr(Date.now()));
+  if (!ui.dmode) ui.dmode = (dow >= 1 && dow <= 5) || doneToday ? 'train' : 'rest';
+  const train = ui.dmode === 'train', meals = D.meals.filter(m => dietOn(m, train));
+  const tot = [0, 0, 0]; meals.forEach(m => dietSum(m.i, train).forEach((v, j) => tot[j] += v)); const kc = kcalOf(tot);
+  let h = `<h1>Dieta</h1><p class="small mut" style="margin-top:-4px">De ${esc(D.by || 'tu preparador')} · ${fdate(new Date(D.date + 'T12:00'))}</p>`;
+  h += `<div class="seg"><button class="${train ? 'on' : ''}" data-a="dmode" data-m="train">🏋️ Día de entreno</button><button class="${train ? '' : 'on'}" data-a="dmode" data-m="rest">😴 Día de descanso</button></div>`;
+  h += `<div class="card dtot"><div class="dk"><b>${kc.toLocaleString('es-ES')}</b><span>kcal / día</span></div><div class="dbars">${MAC.map(([k, n, col, f], j) => `<div class="dbar"><div class="row"><span>${n}</span><span class="grow"></span><b>${Math.round(tot[j])} g</b><span class="mut small">&nbsp;${kc ? Math.round(tot[j] * f / kc * 100) : 0}%</span></div><i><b style="width:${kc ? Math.round(tot[j] * f / kc * 100) : 0}%;background:${col}"></b></i></div>`).join('')}</div></div>`;
+  meals.forEach(m => {
+    const t = dietSum(m.i, train), k = kcalOf(t);
+    h += `<div class="card meal"><div class="row"><b class="disp mn">${esc(m.n)}</b><span class="grow"></span>${k ? `<span class="mk">${k} kcal</span>` : ''}</div>${m.w ? `<div class="small mut">${esc(m.w)}</div>` : ''}${m.note ? `<div class="small" style="color:var(--warn)">${esc(m.note)}</div>` : ''}<ul>${m.i.map(x => `<li class="${dietOn(x, train) ? '' : 'off'}">${esc(x.t)}${x.alt ? `<span class="alt">${esc(x.alt)}</span>` : ''}${!dietOn(x, train) ? '<span class="alt">solo días de entreno</span>' : ''}</li>`).join('')}</ul>${k ? `<div class="mm">${MAC.map(([kk, n, col], j) => `<span><i style="background:${col}"></i>${n[0]} ${Math.round(t[j])} g</span>`).join('')}</div>` : ''}</div>`;
+  });
+  if (!train) { const off = D.meals.filter(m => !dietOn(m, false)); if (off.length) h += `<p class="small mut">Hoy sin: ${off.map(m => esc(m.n)).join(', ')}.</p>`; }
+  h += `<details class="card"><summary><b>Pautas y notas</b></summary><ul class="small">${(D.rules || []).concat(D.notes || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+  if (D.est) h += `<p class="small mut">ⓘ ${esc(D.est)}</p>`;
+  return h;
+}
 function viewMas() {
   const n = Object.values(S.sessions).filter(s => s.done).length;
   let h = `<h1>Más</h1><h2>Google Sheets (automático)</h2>`;
@@ -709,12 +749,12 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 2.2 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 2.3 · plan de adaptación</p>`;
   return h;
 }
 function render() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.v === ui.view));
-  $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : viewHoy();
+  $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : ui.view === 'dieta' ? viewDieta() : viewHoy();
   histSync(); kpSync(); kpAuto(); clkTick();
 }
 function openModal(h, cls) { const m = $('#modal'); const was = !m.hidden; m.innerHTML = `<div class="sheet ${cls || ''}">${h}</div>`; m.hidden = false; if (!was) { try { history.pushState({ m: 1, s: ui.cur ? 1 : 0 }, ''); } catch (e) {} } }
@@ -1019,6 +1059,7 @@ Object.assign(actions, {
   kpfield(el) { const k = ui.kp; if (!k || k.mode === 'bw' || el.dataset.f === k.f) return; kpCommit(); kpGo(k.k, k.i, el.dataset.f); },
   kpclose() { kpCommit(); kpClose(); ui.kpHide = true; Store.flush(); },
   plgo(el) { plGo(+el.dataset.n); },
+  dmode(el) { ui.dmode = el.dataset.m; render(); },
   sw() { const s = cur(); if (!s) return; const w = s.sw || (s.sw = { acc: 0, run: null, first: null }); if (w.run) { w.acc += Date.now() - w.run; w.run = null; } else { w.run = Date.now(); if (!w.first) w.first = w.run; } Store.save(s.id); render(); },
   swreset() { const s = cur(); if (!s) return; confirmBox('¿Poner el cronómetro a cero?', 'Poner a cero', () => { s.sw = null; Object.values(s.ex).forEach(L => L.forEach(x => delete x.st)); Store.save(s.id); closeModal(); render(); }, 'El tiempo por ejercicio volverá a contar desde que lo inicies.'); },
   plist() { ui.list = ui.list ? 0 : 2; try { localStorage.setItem('entreno_mode', ui.list ? 'lista' : 'uno'); } catch (e) {} kpClose(); render(); scrollTo(0, 0); },
@@ -1036,8 +1077,8 @@ Object.assign(actions, {
 let plT = null;
 document.addEventListener('touchstart', ev => { if (!isPlayer() || ev.target.closest('#kp,#modal,nav,textarea')) { plT = null; return; } const t = ev.touches[0]; plT = t.clientX > 30 ? { x: t.clientX, y: t.clientY } : null; }, { passive: true });
 document.addEventListener('touchend', ev => { if (!plT || !isPlayer()) return; const t = ev.changedTouches[0], dx = t.clientX - plT.x, dy = t.clientY - plT.y; plT = null; if (Math.abs(dx) > 70 && Math.abs(dy) < 50) { const n = DAY[cur().day].ex.length; if (dx < 0 && ui.sx < n) plGo(1); else if (dx > 0 && ui.sx > 0) plGo(-1); } }, { passive: true });
-const VIEWS = ['hoy', 'historial', 'progreso', 'mas'];
-function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); if (ui.view === 'progreso') Sheets.weights(); }
+const VIEWS = ['hoy', 'historial', 'progreso', 'dieta', 'mas'];
+function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); if (ui.view === 'progreso') Sheets.weights(); if (ui.view === 'dieta') Sheets.diet(); }
 document.addEventListener('focusin', ev => { const el = ev.target; if (el.dataset && el.dataset.pre) { try { el.select(); } catch (e) {} } });
 window.addEventListener('hashchange', route);
 let backing = 0;
@@ -1069,7 +1110,7 @@ window.addEventListener('online', () => Sheets.push());
   const dr = openDraft(); if (dr) ui.cur = dr.id;
   try { if (navigator.storage && navigator.storage.persist) (await navigator.storage.persisted()) || (await navigator.storage.persist()); } catch (e) {}
   route();
-  Sheets.push(); Sheets.steps(true); Sheets.weights();
+  Sheets.push(); Sheets.steps(true); Sheets.weights(); Sheets.diet();
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
