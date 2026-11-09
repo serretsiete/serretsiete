@@ -57,7 +57,13 @@ nav a{flex:1;max-width:140px;text-align:center;padding:10px 4px 8px;color:var(--
 nav a.on{color:var(--acc)}nav a span{display:block;font-size:19px}
 #timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));z-index:25;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 30px #0008;font-weight:700;font-variant-numeric:tabular-nums}
 #timer[hidden]{display:none}
-#timer span{white-space:nowrap}
+#timer span{white-space:nowrap}#timer small{font-weight:600}
+.clk{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:calc(8px - env(safe-area-inset-top)) -12px 2px;padding:calc(6px + env(safe-area-inset-top)) 12px 6px;position:sticky;top:0;z-index:6;background:#000}
+.clk>div{background:#111214;border:1px solid var(--line);border-radius:12px;padding:6px 12px}
+.clk span{display:block;font-size:11px;color:var(--mut);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clk b{display:block;font-family:Disp,sans-serif;font-size:30px;line-height:1.1;color:#fff;font-variant-numeric:tabular-nums}
+.clk>div:first-child b{color:var(--acc)}
+.extime{color:var(--mut);font-weight:600;font-size:13px;white-space:nowrap}
 
 /* --- Estilo negro / tarjetas grandes / reproductor --- */
 .dcard{position:relative;display:block;width:100%;min-height:118px;text-align:left;margin-top:12px;padding:16px 18px;border-radius:18px;overflow:hidden;border:1px solid #ffffff14;background:linear-gradient(135deg,hsl(var(--h),45%,20%),#0a0a0b 75%)}
@@ -504,7 +510,7 @@ function viewPlayer(s) {
   const d = DAY[s.day], L = d.ex, n = L.length;
   if (ui.sx == null) { const j = L.findIndex(e => !exDone(s, e)); ui.sx = j < 0 ? n : j; }
   ui.sx = Math.max(0, Math.min(n, ui.sx));
-  let h = `<div class="row"><button class="sm ghost" data-a="leave" aria-label="Volver">‹</button><span class="plbar">${L.map((e, j) => `<i class="${j === ui.sx ? 'c' : exDone(s, e) ? 'd' : ''}"></i>`).join('')}</span><button class="sm ghost" data-a="plist" aria-label="Ver todos los ejercicios">☰ Lista</button></div>`;
+  let h = `<div class="row"><button class="sm ghost" data-a="leave" aria-label="Volver">‹</button><span class="plbar">${L.map((e, j) => `<i class="${j === ui.sx ? 'c' : exDone(s, e) ? 'd' : ''}"></i>`).join('')}</span><button class="sm ghost" data-a="plist" aria-label="Ver todos los ejercicios">☰ Lista</button></div>${clkHtml()}`;
   if (ui.sx === n) {
     const total = L.reduce((a, e) => a + e.sets.length, 0), hechas = L.reduce((a, e) => a + (s.ex[e.k] || []).filter(x => x.done).length, 0);
     h += `<div class="plend"><div class="plk">Último paso · ${hechas} de ${total} series</div><h1>¡Casi está!</h1>${extrasHtml(s)}<button class="pri block" data-a="finish" style="padding:16px">Terminar entreno</button><div class="plnav"><button data-a="plgo" data-n="-1">‹ Ejercicio anterior</button></div><button class="block ghost danger" data-a="discard">Descartar este entreno</button></div>`;
@@ -517,7 +523,7 @@ function viewPlayer(s) {
 function viewSessionList(s) {
   const d = DAY[s.day];
   const total = d.ex.reduce((a, e) => a + e.sets.length, 0), hechas = d.ex.reduce((a, e) => a + (s.ex[e.k] || []).filter(x => x.done).length, 0);
-  let h = `<div class="row"><button class="sm ghost" data-a="leave">‹ Volver</button><span class="grow"></span><span class="small mut">${hechas}/${total} series</span>${ui.list === 1 ? '' : '<button class="sm ghost" data-a="plist">▶ Uno a uno</button>'}</div><h1>${d.ico} ${esc(d.n)}</h1><div class="bar ${hechas >= total ? 'g' : ''}"><b style="width:${Math.round(hechas / total * 100)}%"></b></div>`;
+  let h = `<div class="row"><button class="sm ghost" data-a="leave">‹ Volver</button><span class="grow"></span><span class="small mut">${hechas}/${total} series</span>${ui.list === 1 ? '' : '<button class="sm ghost" data-a="plist">▶ Uno a uno</button>'}</div><h1>${d.ico} ${esc(d.n)}</h1>${clkHtml()}<div class="bar ${hechas >= total ? 'g' : ''}"><b style="width:${Math.round(hechas / total * 100)}%"></b></div>`;
   h += `<p class="small mut">Haz al menos una serie de aproximación por ejercicio. Descanso 2' salvo indicación. Rojo = biserie (la parte lenta con la mitad del peso).</p>`;
   d.ex.forEach(e => { h += exHtml(s, e, ''); });
   h += extrasHtml(s);
@@ -568,10 +574,11 @@ function viewHistorial() {
 }
 function sessionDetail(s) {
   const d = DAY[s.day];
-  let h = `<h3>${esc(d.n)}</h3><p class="small mut">${new Date(s.date).toLocaleString('es-ES')}</p><table>`;
+  const tm = exTimes(s), tot = s.started && s.date ? (s.date - s.started) / 1000 : 0;
+  let h = `<h3>${esc(d.n)}</h3><p class="small mut">${new Date(s.date).toLocaleString('es-ES')}${tot > 0 && tot < 18000 ? ` · ⏱ ${mmss(tot)}` : ''}</p><table>`;
   for (const e of d.ex) {
     const ls = (s.ex[e.k] || []).map((x, i) => x.done ? `<div>${esc(setLabel(e.sets[i], i, e))}: ${esc(prevText(e.sets[i], x))}</div>` : '').join('');
-    h += `<tr><td style="width:40%"><b>${esc(e.n)}</b></td><td>${ls || '<span class="mut">—</span>'}</td></tr>`;
+    h += `<tr><td style="width:40%"><b>${esc(e.n)}</b>${tm.dur[e.k] ? `<div class="extime">⏱ ${mmss(tm.dur[e.k])}</div>` : ''}</td><td>${ls || '<span class="mut">—</span>'}</td></tr>`;
   }
   h += `</table>${s.notes ? `<p class="small"><b>Notas:</b> ${esc(s.notes)}</p>` : ''}<div class="row wrap" style="margin-top:12px"><button data-a="edit" data-id="${s.id}">Editar</button><button class="danger" data-a="delsess" data-id="${s.id}">Borrar</button><span class="grow"></span><button data-a="close">Cerrar</button></div>`;
   return h;
@@ -698,13 +705,13 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 2.0 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 2.1 · plan de adaptación</p>`;
   return h;
 }
 function render() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.v === ui.view));
   $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : viewHoy();
-  histSync(); kpSync(); kpAuto();
+  histSync(); kpSync(); kpAuto(); clkTick();
 }
 function openModal(h, cls) { const m = $('#modal'); const was = !m.hidden; m.innerHTML = `<div class="sheet ${cls || ''}">${h}</div>`; m.hidden = false; if (!was) { try { history.pushState({ m: 1, s: ui.cur ? 1 : 0 }, ''); } catch (e) {} } }
 function closeModal() { const m = $('#modal'), was = !m.hidden; m.hidden = true; m.innerHTML = ''; ui.confirm = null; if (was && history.state && history.state.m) goBack(); }
@@ -731,24 +738,47 @@ function recap(s) {
   }
   return { sets, ex, kg: Math.round(kg), recs: recs.sort((a, b) => b.diff - a.diff).slice(0, 5) };
 }
+function exTimesHtml(s) {
+  const tm = exTimes(s); if (!tm.n) return '';
+  return `<div style="text-align:left;margin:4px 0 10px"><div class="small mut disp" style="letter-spacing:1.5px;margin-bottom:2px">⏱ Tiempo por ejercicio</div>${DAY[s.day].ex.filter(e => tm.dur[e.k]).map(e => `<div class="rec"><span>${esc(e.n)}</span><span class="extime">${mmss(tm.dur[e.k])}</span></div>`).join('')}</div>`;
+}
 function celebrate(s) {
   const r = recap(s), emo = ['🎉', '💪', '🔥', '⭐', '🏆', '✨'], d = DAY[s.day];
   const total = d.ex.reduce((a, e) => a + e.sets.length, 0), pct = total ? Math.round(r.sets / total * 100) : 0;
   const mins = s.started && s.date ? Math.round((s.date - s.started) / 60000) : null, dur = mins != null && mins > 0 && mins < 300 ? (mins >= 60 ? `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}` : `${mins}'`) : '—';
   const C = 2 * Math.PI * 80, nm = (d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, '');
   const conf = Array.from({ length: 22 }, (_, i) => `<span style="left:${Math.round(Math.random() * 96)}%;animation-delay:${(Math.random() * .9).toFixed(2)}s">${emo[i % emo.length]}</span>`).join('');
-  openModal(`<div class="fink">Entreno completado</div><div class="finn">${esc(nm)}</div><div class="ring"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#1d1f22" stroke-width="12"/><circle cx="90" cy="90" r="80" fill="none" stroke="${pct >= 100 ? '#38d9a9' : '#c6f432'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * Math.min(pct, 100) / 100).toFixed(1)} ${C.toFixed(1)}"/></svg><b>${pct}%<small>COMPLETADO</small></b></div><div class="fstats"><div class="fstat"><b>${dur}</b><span>Tiempo</span></div><div class="fstat"><b>${r.sets}/${total}</b><span>Series</span></div><div class="fstat"><b>${r.kg.toLocaleString('es-ES')}</b><span>Kg movidos</span></div><div class="fstat"><b>${r.recs.length}</b><span>${r.recs.length === 1 ? 'Récord' : 'Récords'}</span></div></div>${r.recs.length ? r.recs.map(x => `<div class="rec"><span>🏆 ${esc(x.n)}</span><b style="color:var(--ok)">+${fmt(Math.round(x.diff * 10) / 10)} kg est.</b></div>`).join('') : '<p class="small mut">Cuando repitas este día verás aquí tus mejoras.</p>'}<p class="small mut" style="margin-top:10px">${Sheets.on() ? '☁️ Enviando a tu hoja de Google…' : '💾 Guardado en tu iPhone.'}</p><button class="pri block" data-a="close" style="padding:16px">¡Genial!</button>`, 'fin');
+  openModal(`<div class="fink">Entreno completado</div><div class="finn">${esc(nm)}</div><div class="ring"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#1d1f22" stroke-width="12"/><circle cx="90" cy="90" r="80" fill="none" stroke="${pct >= 100 ? '#38d9a9' : '#c6f432'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * Math.min(pct, 100) / 100).toFixed(1)} ${C.toFixed(1)}"/></svg><b>${pct}%<small>COMPLETADO</small></b></div><div class="fstats"><div class="fstat"><b>${dur}</b><span>Tiempo</span></div><div class="fstat"><b>${r.sets}/${total}</b><span>Series</span></div><div class="fstat"><b>${r.kg.toLocaleString('es-ES')}</b><span>Kg movidos</span></div><div class="fstat"><b>${r.recs.length}</b><span>${r.recs.length === 1 ? 'Récord' : 'Récords'}</span></div></div>${exTimesHtml(s)}${r.recs.length ? r.recs.map(x => `<div class="rec"><span>🏆 ${esc(x.n)}</span><b style="color:var(--ok)">+${fmt(Math.round(x.diff * 10) / 10)} kg est.</b></div>`).join('') : '<p class="small mut">Cuando repitas este día verás aquí tus mejoras.</p>'}<p class="small mut" style="margin-top:10px">${Sheets.on() ? '☁️ Enviando a tu hoja de Google…' : '💾 Guardado en tu iPhone.'}</p><button class="pri block" data-a="close" style="padding:16px">¡Genial!</button>`, 'fin');
   if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { const c = document.createElement('div'); c.className = 'confetti'; c.innerHTML = conf; document.body.appendChild(c); setTimeout(() => c.remove(), 3600); }
 }
 
 /* ================= Temporizador de descanso ================= */
-function startTimer(sec) { if (!sec) { stopTimer(); return; } ui.timer = { end: Date.now() + sec * 1000 }; clearInterval(startTimer.i); startTimer.i = setInterval(tick, 250); tick(); }
+const mmss = sec => { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, x = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+// Tiempo de cada ejercicio: el rato entre una serie terminada y la siguiente cuenta para el ejercicio de esa siguiente serie (incluye su descanso)
+function exTimes(s) {
+  const ev = []; for (const [k, L] of Object.entries(s.ex || {})) (L || []).forEach(x => { if (x && x.done && x.t) ev.push({ k, t: x.t }); });
+  ev.sort((a, b) => a.t - b.t); const dur = {}; let prev = s.started || (ev[0] && ev[0].t) || 0;
+  for (const e of ev) { dur[e.k] = (dur[e.k] || 0) + Math.max(0, e.t - prev) / 1000; prev = e.t; }
+  return { dur, last: prev, n: ev.length };
+}
+function clkHtml() { return `<div class="clk"><div><span>Entreno</span><b id="clkT">0:00</b></div><div><span id="clkL">Este ejercicio</span><b id="clkE">0:00</b></div></div>`; }
+function clkTick() {
+  const T = document.getElementById('clkT'); if (!T) return; const s = cur(); if (!s || s.done) return;
+  const now = Date.now(), tm = exTimes(s); T.textContent = mmss((now - s.started) / 1000);
+  const L = DAY[s.day].ex, e = isPlayer() ? L[ui.sx] : (ui.kp && ui.kp.k ? EX[ui.kp.k] : L.find(x => !exDone(s, x)));
+  const E = document.getElementById('clkE'), lab = document.getElementById('clkL'); if (!E) return;
+  if (!e) { E.textContent = '—'; return; }
+  const live = !exDone(s, e) ? (now - (tm.last || s.started)) / 1000 : 0;
+  E.textContent = mmss((tm.dur[e.k] || 0) + live); lab.textContent = isPlayer() ? 'Este ejercicio' : e.n.length > 18 ? e.n.slice(0, 17) + '…' : e.n;
+}
+setInterval(clkTick, 1000);
+function startTimer(sec) { if (!sec) { stopTimer(); return; } ui.timer = { start: Date.now(), end: Date.now() + sec * 1000 }; clearInterval(startTimer.i); startTimer.i = setInterval(tick, 250); tick(); }
 function stopTimer() { ui.timer = null; clearInterval(startTimer.i); $('#timer').hidden = true; }
 function tick() {
   const t = $('#timer'); if (!ui.timer) { t.hidden = true; return; }
-  const left = Math.ceil((ui.timer.end - Date.now()) / 1000), a = Math.abs(left);
+  const left = Math.ceil((ui.timer.end - Date.now()) / 1000), up = Math.floor((Date.now() - (ui.timer.start || Date.now())) / 1000), goal = Math.round((ui.timer.end - (ui.timer.start || ui.timer.end)) / 1000);
   t.hidden = false; t.classList.toggle('end', left <= 0);
-  t.innerHTML = `<span>${left <= 0 ? '¡A por la siguiente! +' : 'Descanso '}${Math.floor(a / 60)}:${String(a % 60).padStart(2, '0')}</span><button class="sm" data-a="t30">+30"</button><button class="sm" data-a="tstop">✕</button>`;
+  t.innerHTML = `<span>${left <= 0 ? '¡A por la siguiente! ' : 'Descanso '}<b>${mmss(up)}</b> <small class="mut">/ ${mmss(goal)}</small></span><button class="sm" data-a="t30">+30"</button><button class="sm" data-a="tstop">✕</button>`;
   if (left === 0 && !ui.timer.buzz) { ui.timer.buzz = true; try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} }
   if (left < -120) stopTimer();
 }
@@ -770,12 +800,12 @@ const actions = {
   leave() { ui.cur = null; render(); scrollTo(0, 0); },
   tick(el) {
     const s = cur(), e = EX[el.dataset.k], i = +el.dataset.i, x = s.ex[e.k][i], sp = e.sets[i];
-    if (x.done) { x.done = false; Store.save(s.id); render(); return; }
+    if (x.done) { x.done = false; delete x.t; Store.save(s.id); render(); return; }
     // Si no has escrito nada, usa lo sugerido (lo de la última vez o el % de la descendente)
     const inputs = [...document.querySelectorAll(`input[data-k="${e.k}"][data-i="${i}"]`)];
     for (const inp of inputs) { const f = inp.dataset.f; if (x[f] == null && inp.dataset.sug) { const raw = inp.value !== '' ? inp.value : inp.placeholder; if (num(raw) != null) x[f] = f[0] === 'r' ? Math.round(num(raw)) : num(raw); } }
     if (sp.t !== 'act' && (x.w == null || x.r == null)) { toast('Escribe kg y repeticiones'); return; }
-    x.done = true; Store.save(s.id); render();
+    x.done = true; x.t = Date.now(); Store.save(s.id); render();
     if (sp.t !== 'act') {
       let prev = 0;
       for (const o of Object.values(S.sessions)) { if (!o.done || o.id === s.id) continue; (o.ex[e.k] || []).forEach((y, j) => { const q = e.sets[j] || {}; if (y.done && q.t !== 'act' && num(y.w) != null && y.r != null) prev = Math.max(prev, e1rm(y.w, y.r)); }); }
@@ -914,7 +944,8 @@ function kpMark() {
 }
 function kpScroll() {
   const el = kpEl(); if (!el) return; const box = (el.closest('.set') || el), r = box.getBoundingClientRect(), kh = $('#kp').offsetHeight;
-  const room = innerHeight - kh, want = Math.max(12, (room - r.height) / 3);
+  const ch = ($('.clk') || { offsetHeight: 0 }).offsetHeight, room = innerHeight - kh, want = Math.max(12 + ch, (room - r.height) / 3);
+  if (r.top < 8 + ch) { try { scrollBy({ top: r.top - want, behavior: 'smooth' }); } catch (e) {} return; }
   if (r.top < 8 || r.bottom > room - 8 || Math.abs(r.top - want) > room / 2) { try { scrollBy({ top: r.top - want, behavior: 'smooth' }); } catch (e) {} }
 }
 function kpGo(k, i, f) {
