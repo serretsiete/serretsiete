@@ -324,6 +324,10 @@ nav a.on{color:var(--acc)}
 .dk b{color:#fff}
 .stro b{color:#fff}
 #stc .stb.sel{filter:brightness(1.15)}
+.tb .swp #clkT{min-width:84px;text-align:right;display:inline-block}
+.tb .swp .cs{font-size:12px;font-weight:600;opacity:.75;margin-left:1px}
+.pillb{background:#fff;color:#000;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;white-space:nowrap}
+.tb{grid-template-columns:1fr auto 1fr}.tb .tbl{justify-content:flex-start}
 </style>
 </head>
 <body>
@@ -686,7 +690,8 @@ function prevText(sp, x) {
   return `${fmt(x.w)} kg × ${x.r ?? '–'}`;
 }
 const exDone = (s, e) => (s.ex[e.k] || []).every(x => x.done);
-try { if (localStorage.getItem('entreno_mode') === 'lista') ui.list = 2; } catch (e) {}
+const listFixed = () => { try { return localStorage.getItem('entreno_mode') === 'lista-fija'; } catch (e) { return false; } };
+ui.list = listFixed() ? 2 : 0;
 const isPlayer = () => ui.view === 'hoy' && !!cur() && !cur().done && !ui.list;
 function viewSession(s) { return ui.list ? viewSessionList(s) : viewPlayer(s); }
 function extrasHtml(s) { return `<div class="card"><b>Extras</b><label class="chk"><input type="checkbox" data-x="calves" ${s.calves ? 'checked' : ''}> 100 elevaciones de gemelo de pie sin peso</label><label class="chk"><input type="checkbox" data-x="abs" ${s.abs ? 'checked' : ''}> Abdominales: 2 ejercicios × 3 series al fallo (30" de descanso)</label><label class="small mut">Notas del día</label><textarea data-x="notes" rows="2" placeholder="Sensaciones, molestias, cambios de máquina…">${esc(s.notes)}</textarea></div>`; }
@@ -708,7 +713,7 @@ function viewPlayer(s) {
 function viewSessionList(s) {
   const d = DAY[s.day];
   const total = d.ex.reduce((a, e) => a + e.sets.length, 0), hechas = d.ex.reduce((a, e) => a + (s.ex[e.k] || []).filter(x => x.done).length, 0);
-  let h = `<header class="tb"><span class="tbl"><button class="ib" data-a="leave" aria-label="Salir">${IC.close}</button></span>${swPill()}<span class="tbr">${ui.list === 1 ? '' : `<button class="ib" data-a="plist" aria-label="Uno a uno">${IC.play1}</button>`}</span></header><p class="cap">${hechas} de ${total} series</p><h1 class="hd">${esc((d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, ''))}</h1>${clkHtml()}<div class="bar ${hechas >= total ? 'g' : ''}"><b style="width:${Math.round(hechas / total * 100)}%"></b></div>`;
+  let h = `<header class="tb"><span class="tbl"><button class="ib" data-a="leave" aria-label="Salir">${IC.close}</button></span>${swPill()}<span class="tbr">${ui.list === 1 ? '' : `<button class="pillb" data-a="plist">Modo grande</button>`}</span></header><p class="cap">${hechas} de ${total} series</p><h1 class="hd">${esc((d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, ''))}</h1>${clkHtml()}<div class="bar ${hechas >= total ? 'g' : ''}"><b style="width:${Math.round(hechas / total * 100)}%"></b></div>`;
   h += `<p class="small mut">Haz al menos una serie de aproximación por ejercicio. Descanso 2' salvo indicación. Rojo = biserie (la parte lenta con la mitad del peso).</p>`;
   d.ex.forEach(e => { h += exHtml(s, e, ''); });
   h += extrasHtml(s);
@@ -966,7 +971,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.4 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.5 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -1014,6 +1019,7 @@ function celebrate(s) {
 }
 
 /* ================= Temporizador de descanso ================= */
+const swFmt = ms => { ms = Math.max(0, ms); const cs = Math.floor(ms / 10) % 100; return `${mmss(ms / 1000)}<small class="cs">,${String(cs).padStart(2, '0')}</small>`; };
 const mmss = sec => { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, x = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
 // Tiempo de cada ejercicio: el rato entre una serie terminada y la siguiente cuenta para el ejercicio de esa siguiente serie (incluye su descanso)
 function exTimes(s) {
@@ -1027,7 +1033,7 @@ function exTimes(s) {
 const swMs = s => { const w = s && s.sw; return w ? (w.acc || 0) + (w.run ? Date.now() - w.run : 0) : 0; };
 function swPill() {
   const s = cur(), w = (s && s.sw) || {}, on = !!w.run, used = !!w.first;
-  return `<span class="swp ${on ? 'on' : ''}"><span id="clkT">${mmss(swMs(s) / 1000)}</span>${used && !on ? '<button class="ib swr" data-a="swreset" aria-label="Poner a cero">↺</button>' : ''}<button class="ib swb" data-a="sw" aria-label="${on ? 'Pausar' : 'Iniciar'} cronómetro">${on ? '❚❚' : '▶'}</button></span>`;
+  return `<span class="swp ${on ? 'on' : ''}"><span id="clkT">${swFmt(swMs(s))}</span>${used && !on ? '<button class="ib swr" data-a="swreset" aria-label="Poner a cero">↺</button>' : ''}<button class="ib swb" data-a="sw" aria-label="${on ? 'Pausar' : 'Iniciar'} cronómetro">${on ? '❚❚' : '▶'}</button></span>`;
 }
 function clkHtml() { return ''; }
 function clkHtmlOld() {
@@ -1036,7 +1042,7 @@ function clkHtmlOld() {
 }
 function clkTick() {
   const T = document.getElementById('clkT'); if (!T) return; const s = cur(); if (!s || s.done) return;
-  const now = Date.now(), tm = exTimes(s); T.textContent = mmss(swMs(s) / 1000);
+  const now = Date.now(), tm = exTimes(s); T.innerHTML = swFmt(swMs(s));
   const E2 = document.getElementById('clkE2');
   if (!(s.sw && s.sw.first)) { const E0 = document.getElementById('clkE'); if (E0) E0.textContent = '—'; if (E2) E2.textContent = '—'; return; }
   const L = DAY[s.day].ex, e = isPlayer() ? L[ui.sx] : (ui.kp && ui.kp.k ? EX[ui.kp.k] : L.find(x => !exDone(s, x)));
@@ -1046,6 +1052,9 @@ function clkTick() {
   E.textContent = mmss((tm.dur[e.k] || 0) + live); if (E2 && E2 !== E) E2.textContent = E.textContent; lab.textContent = isPlayer() ? 'Este ejercicio' : e.n.length > 18 ? e.n.slice(0, 17) + '…' : e.n;
 }
 setInterval(clkTick, 250);
+// Centésimas: refresco rápido solo del número y solo con el cronómetro en marcha
+function swLoop() { try { const s = cur(), T = document.getElementById('clkT'); if (T && s && s.sw && s.sw.run) T.innerHTML = swFmt(swMs(s)); } catch (e) {} requestAnimationFrame(swLoop); }
+requestAnimationFrame(swLoop);
 function startTimer(sec) { if (!sec) { stopTimer(); return; } ui.timer = { start: Date.now(), end: Date.now() + sec * 1000 }; clearInterval(startTimer.i); startTimer.i = setInterval(tick, 250); tick(); }
 function stopTimer() { ui.timer = null; clearInterval(startTimer.i); $('#timer').hidden = true; }
 function tick() {
@@ -1067,10 +1076,10 @@ const cur = () => S.sessions[ui.cur];
 const actions = {
   start(el) {
     const dr = openDraft();
-    if (dr) { confirmBox('Tienes un entreno a medias', 'Empezar otro', () => { delete S.sessions[dr.id]; Store.remove(dr.id); const s = newSession(el.dataset.d); ui.cur = s.id; ui.sx = null; render(); scrollTo(0, 0); }, `${DAY[dr.day].n}: si empiezas otro, se descarta.`); return; }
-    const s = newSession(el.dataset.d); ui.cur = s.id; ui.sx = null; ui.kpHide = false; render(); scrollTo(0, 0);
+    if (dr) { confirmBox('Tienes un entreno a medias', 'Empezar otro', () => { delete S.sessions[dr.id]; Store.remove(dr.id); const s = newSession(el.dataset.d); ui.cur = s.id; ui.sx = null; ui.list = listFixed() ? 2 : 0; render(); scrollTo(0, 0); }, `${DAY[dr.day].n}: si empiezas otro, se descarta.`); return; }
+    const s = newSession(el.dataset.d); ui.cur = s.id; ui.sx = null; ui.kpHide = false; ui.list = listFixed() ? 2 : 0; render(); scrollTo(0, 0);
   },
-  resume(el) { ui.cur = el.dataset.id; ui.sx = null; ui.kpHide = false; render(); scrollTo(0, 0); },
+  resume(el) { ui.cur = el.dataset.id; ui.sx = null; ui.kpHide = false; ui.list = listFixed() ? 2 : 0; render(); scrollTo(0, 0); },
   leave() { ui.cur = null; render(); scrollTo(0, 0); },
   tick(el) {
     const s = cur(), e = EX[el.dataset.k], i = +el.dataset.i, x = s.ex[e.k][i], sp = e.sets[i];
@@ -1113,7 +1122,7 @@ const actions = {
   },
   discard() { const s = cur(); confirmBox('¿Descartar este entreno?', 'Descartar', () => { delete S.sessions[s.id]; Store.remove(s.id); if (s.date) Sheets.queue(s.id, 'del'); stopTimer(); ui.cur = null; closeModal(); render(); }, 'Se borrará lo registrado hoy en este entreno.'); },
   hist(el) { openModal(sessionDetail(S.sessions[el.dataset.id])); },
-  edit(el) { const s = S.sessions[el.dataset.id]; s.done = false; ui.sx = null; Store.save(s.id); closeModal(); ui.view = 'hoy'; ui.cur = s.id; location.hash = '#hoy'; render(); scrollTo(0, 0); toast('Edita y pulsa «Terminar entreno» para guardar'); },
+  edit(el) { const s = S.sessions[el.dataset.id]; s.done = false; ui.sx = null; ui.list = listFixed() ? 2 : 0; Store.save(s.id); closeModal(); ui.view = 'hoy'; ui.cur = s.id; location.hash = '#hoy'; render(); scrollTo(0, 0); toast('Edita y pulsa «Terminar entreno» para guardar'); },
   delsess(el) { const id = el.dataset.id; confirmBox('¿Borrar este entreno?', 'Borrar', () => { delete S.sessions[id]; Store.remove(id); Sheets.queue(id, 'del'); closeModal(); render(); toast('Entreno borrado'); }, 'No se puede deshacer.'); },
   backup() { Backup.save().then(ok => { if (ok) { closeModal(); render(); toast('Copia guardada ✓'); } }); },
   csv() { Backup.share('﻿' + csv(), Backup.name().replace('.json', '.csv'), 'text/csv'); },
@@ -1289,7 +1298,7 @@ Object.assign(actions, {
   dmode(el) { ui.dmode = el.dataset.m; ui.dmodeDay = dstr(Date.now()); render(); },
   sw() { const s = cur(); if (!s) return; const w = s.sw || (s.sw = { acc: 0, run: null, first: null }); if (w.run) { w.acc += Date.now() - w.run; w.run = null; } else { w.run = Date.now(); if (!w.first) w.first = w.run; } Store.save(s.id); render(); },
   swreset() { const s = cur(); if (!s) return; confirmBox('¿Poner el cronómetro a cero?', 'Poner a cero', () => { s.sw = null; Object.values(s.ex).forEach(L => L.forEach(x => delete x.st)); Store.save(s.id); closeModal(); render(); }, 'El tiempo por ejercicio volverá a contar desde que lo inicies.'); },
-  plist() { ui.list = ui.list ? 0 : 2; try { localStorage.setItem('entreno_mode', ui.list ? 'lista' : 'uno'); } catch (e) {} kpClose(); render(); scrollTo(0, 0); },
+  plist() { ui.list = ui.list ? 0 : 2; kpClose(); ui.kpHide = !!ui.list; render(); scrollTo(0, 0); },
   kpok() {
     const k = ui.kp; if (!k) return;
     if (k.mode === 'bw') { const el = $('#bwin'); if (!k.typed && el && el.value === '' && num(el.placeholder) != null) el.value = el.placeholder; kpClose(); actions.bwsave(); return; }
