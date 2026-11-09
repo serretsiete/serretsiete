@@ -479,6 +479,7 @@ async function load() {
 
 /* ================= Sesiones ================= */
 const ui = { view: 'hoy', cur: null, prog: null, timer: null };
+let swOn = false, clkIv = null; // bucle de centésimas y reloj de «Este ejercicio»: solo activos durante un entreno
 function sessionsSorted() { return Object.values(S.sessions).sort((a, b) => (b.date || b.started) - (a.date || a.started)); }
 function openDraft() { return sessionsSorted().find(s => !s.done) || null; }
 function lastDone(dayId) { return sessionsSorted().find(s => s.done && s.day === dayId) || null; }
@@ -976,13 +977,13 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.7 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.8 · plan de adaptación</p>`;
   return h;
 }
 function render() {
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.v === ui.view));
   $('#app').innerHTML = ui.view === 'historial' ? viewHistorial() : ui.view === 'progreso' ? viewProgreso() : ui.view === 'mas' ? viewMas() : ui.view === 'dieta' ? viewDieta() : viewHoy();
-  histSync(); kpSync(); clkTick(); try { const c = cur(); if (c && c.sw && c.sw.run) swStart(); } catch (e) {}
+  histSync(); kpSync(); clkTick(); try { clkSync(); const c = cur(); if (c && c.sw && c.sw.run) swStart(); } catch (e) { console.warn('cronómetro', e); }
 }
 function openModal(h, cls) { const m = $('#modal'); const was = !m.hidden; m.innerHTML = `<div class="sheet ${cls || ''}">${h}</div>`; m.hidden = false; if (!was) { try { history.pushState({ m: 1, s: ui.cur ? 1 : 0 }, ''); } catch (e) {} } }
 function closeModal() { const m = $('#modal'), was = !m.hidden; m.hidden = true; m.innerHTML = ''; ui.confirm = null; if (was && history.state && history.state.m) goBack(); }
@@ -1056,9 +1057,8 @@ function clkTick() {
   const live = !exDone(s, e) ? Math.max(0, swMs(s) - (tm.last || 0)) / 1000 : 0;
   E.textContent = mmss((tm.dur[e.k] || 0) + live); if (E2 && E2 !== E) E2.textContent = E.textContent; lab.textContent = isPlayer() ? 'Este ejercicio' : e.n.length > 18 ? e.n.slice(0, 17) + '…' : e.n;
 }
-setInterval(clkTick, 250);
+function clkSync() { const on = !!(ui.view === 'hoy' && cur() && !cur().done); if (on && !clkIv) clkIv = setInterval(clkTick, 1000); else if (!on && clkIv) { clearInterval(clkIv); clkIv = null; } }
 // Centésimas: refresco rápido solo del número y solo con el cronómetro en marcha
-let swOn = false;
 function swLoop() {
   const s = cur(), T = document.getElementById('clkT');
   if (!(T && s && !s.done && s.sw && s.sw.run)) { swOn = false; return; }
@@ -1318,7 +1318,7 @@ document.addEventListener('touchstart', ev => { if (!isPlayer() || ev.target.clo
 document.addEventListener('touchend', ev => { if (!plT || !isPlayer()) return; const t = ev.changedTouches[0], dx = t.clientX - plT.x, dy = t.clientY - plT.y; plT = null; if (Math.abs(dx) > 70 && Math.abs(dy) < 50) { const n = DAY[cur().day].ex.length; if (dx < 0 && ui.sx < n) plGo(1); else if (dx > 0 && ui.sx > 0) plGo(-1); } }, { passive: true });
 document.querySelectorAll('.nvi').forEach(x => { x.innerHTML = IC[x.dataset.i]; });
 const VIEWS = ['hoy', 'historial', 'progreso', 'dieta', 'mas'];
-function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); if (ui.view === 'progreso') Sheets.weights(); if (ui.view === 'dieta') Sheets.diet(); }
+function route() { closeModal(); const h = location.hash.slice(1); ui.view = VIEWS.includes(h) ? h : 'hoy'; render(); scrollTo(0, 0); if (ui.view === 'progreso') { Sheets.weights(); Sheets.steps(); } if (ui.view === 'dieta') Sheets.diet(); }
 document.addEventListener('focusin', ev => { const el = ev.target; if (el.dataset && el.dataset.pre) { try { el.select(); } catch (e) {} } });
 window.addEventListener('hashchange', route);
 let backing = 0;
@@ -1342,7 +1342,7 @@ document.getElementById('tabs').addEventListener('click', ev => {
 });
 window.addEventListener('pagehide', () => Store.flush());
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') Store.flush(); else { Sheets.push(); Sheets.steps(true); Sheets.weights(); } });
-setInterval(() => { if (document.visibilityState === 'visible') Sheets.steps(true); }, 30000);
+setInterval(() => { if (document.visibilityState === 'visible' && ((ui.view === 'hoy' && !cur()) || ui.view === 'progreso')) Sheets.steps(true); }, 120000);
 window.addEventListener('online', () => Sheets.push());
 
 (async function boot() {
