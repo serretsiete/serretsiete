@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
-:root{--bg:#000;--panel:#121212;--panel2:#212121;--line:#2c2c2c;--txt:#f8f8f8;--mut:#9e9e9e;--acc:#ffffff;--ink:#000;--ok:#38d9a9;--warn:#ffb020;--bad:#ff6363;--red:#ff7a7a}
+:root{--bg:#000;--panel:#121212;--panel2:#212121;--line:#2c2c2c;--txt:#f8f8f8;--mut:#9e9e9e;--acc:#ff3b30;--ink:#fff;--ok:#38d9a9;--warn:#ffb020;--bad:#ff6363;--red:#ff6b61}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:15px;font-feature-settings:"cv11","ss01";letter-spacing:-.1px;-webkit-tap-highlight-color:transparent}
 main{max-width:640px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 12px calc(96px + env(safe-area-inset-bottom))}
@@ -302,6 +302,28 @@ body.kpon .media,body.kpon .media.ph{min-height:0;padding-top:10px;padding-botto
 .set.kpcur{background:none;box-shadow:none}
 .ex.pl .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 54px}
 .ex.pl .inp{grid-template-columns:1fr 1fr 54px}
+
+/* ===== v3.3 · acento rojo ===== */
+button.pri,.kpok{background:var(--acc);color:#fff}
+button.pri:active,.kpok:active{filter:brightness(.9)}
+.wk .c.today i,.wk .c.today.done i{background:var(--acc);color:#fff;box-shadow:0 0 0 5px #ff3b3033}
+.tb .swp.on{background:var(--acc);color:#fff}.tb .swp.on .swb{background:#fff;color:var(--acc)}
+.tb .swp .swb{background:var(--acc);color:#fff}
+.plbar i.c{background:var(--acc)}
+.pb2 b{background:var(--acc)}
+nav a.on{color:var(--acc)}
+.tag{background:var(--acc);color:#fff}
+.dcard.today{box-shadow:inset 0 0 0 2px var(--acc)}
+.ex.pl input.kpon,.kpf.on{box-shadow:inset 0 0 0 2px var(--acc)}
+.seg button.on{background:#3a3a3a;color:#fff}
+.hero2 .cap{color:#ff8a82}
+.bichip{background:var(--acc);color:#fff}
+.ex.pl .inp label.slow,.kpf.slow span{color:#ff8a82}
+#timer.end{background:var(--acc);color:#fff}
+.sh span,.sh a{text-decoration-color:var(--acc)}
+.dk b{color:#fff}
+.stro b{color:#fff}
+#stc .stb.sel{filter:brightness(1.15)}
 </style>
 </head>
 <body>
@@ -791,7 +813,7 @@ function stepsCard() {
   let bars = '';
   days.forEach((x, i) => {
     const bx = pl + i * bw + bw * .15, w = bw * .7, v = x.v || 0, isT = i === N - 1;
-    if (x.v != null) { bars += `<rect class="stb" data-i="${i}" x="${bx.toFixed(1)}" y="${Y(v).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(2, H - pb - Y(v)).toFixed(1)}" rx="${N === 7 ? 5 : 2}" fill="${v >= G ? '#ffffff' : '#4a4a4a'}"${isT ? ' opacity=".9"' : ''}/>`; if (N === 7) bars += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${(Y(v) - 4).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#f8f8f8">${kfmt(v)}</text>`; }
+    if (x.v != null) { bars += `<rect class="stb" data-i="${i}" x="${bx.toFixed(1)}" y="${Y(v).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(2, H - pb - Y(v)).toFixed(1)}" rx="${N === 7 ? 5 : 2}" fill="${v >= G ? '#ff3b30' : '#4a4a4a'}"${isT ? ' opacity=".9"' : ''}/>`; if (N === 7) bars += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${(Y(v) - 4).toFixed(1)}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#f8f8f8">${kfmt(v)}</text>`; }
     else bars += `<rect x="${bx.toFixed(1)}" y="${H - pb - 2}" width="${w.toFixed(1)}" height="2" rx="1" fill="#2c2c2c"/>`;
     if (N === 7 || i === 0 || i === N - 1 || (i % 7 === 0 && i < N - 4)) bars += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="${N === 7 ? 11 : 9}" fill="#9e9e9e">${N === 7 ? LET[(x.d.getDay() + 6) % 7] : x.d.getDate()}</text>`;
   });
@@ -815,9 +837,9 @@ function bwChart(P) {
   const area = `${path} L${X(t1).toFixed(1)},${H - pb} L${X(t0).toFixed(1)},${H - pb} Z`;
   const ticks = [mn + pad, (mn + mx) / 2, mx - pad];
   const lab = [0, .33, .66, 1].map(f => { const t = t0 + span * f; return `<text x="${(pl + f * (W - pl - pr)).toFixed(1)}" y="${H - 6}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}" font-size="11" fill="#9e9e9e">${new Date(t).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })}</text>`; }).join('');
-  const dots = P.length <= 24 ? P.map(p => `<circle cx="${X(p.date).toFixed(1)}" cy="${Y(p.w).toFixed(1)}" r="3" fill="#ffffff"/>`).join('') : '';
+  const dots = P.length <= 24 ? P.map(p => `<circle cx="${X(p.date).toFixed(1)}" cy="${Y(p.w).toFixed(1)}" r="3" fill="#ff3b30"/>`).join('') : '';
   const li = P.length - 1;
-  return `<div class="bwro" id="bwro">${bwReadout(li)}</div><svg class="bwc" id="bwc" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del peso, desliza para ver cada semana" data-t0="${t0}" data-span="${span}" data-pl="${pl}" data-pr="${pr}" data-w="${W}">${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="#2c2c2c"/><text x="2" y="${(Y(t) + 4).toFixed(1)}" font-size="11" fill="#9e9e9e">${fmt(Math.round(t * 10) / 10)}</text>`).join('')}<path d="${area}" fill="#ffffff" opacity=".08"/><path d="${path}" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>${dots}${lab}<line id="bwl" x1="${X(P[li].date).toFixed(1)}" x2="${X(P[li].date).toFixed(1)}" y1="${pt}" y2="${H - pb}" stroke="#fff" stroke-opacity=".5" stroke-dasharray="3 3"/><circle id="bwd" cx="${X(P[li].date).toFixed(1)}" cy="${Y(P[li].w).toFixed(1)}" r="6" fill="#ffffff" stroke="#121212" stroke-width="2"/></svg>`;
+  return `<div class="bwro" id="bwro">${bwReadout(li)}</div><svg class="bwc" id="bwc" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Evolución del peso, desliza para ver cada semana" data-t0="${t0}" data-span="${span}" data-pl="${pl}" data-pr="${pr}" data-w="${W}">${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="#2c2c2c"/><text x="2" y="${(Y(t) + 4).toFixed(1)}" font-size="11" fill="#9e9e9e">${fmt(Math.round(t * 10) / 10)}</text>`).join('')}<path d="${area}" fill="#ff3b30" opacity=".08"/><path d="${path}" fill="none" stroke="#ff3b30" stroke-width="2.5" stroke-linejoin="round"/>${dots}${lab}<line id="bwl" x1="${X(P[li].date).toFixed(1)}" x2="${X(P[li].date).toFixed(1)}" y1="${pt}" y2="${H - pb}" stroke="#fff" stroke-opacity=".5" stroke-dasharray="3 3"/><circle id="bwd" cx="${X(P[li].date).toFixed(1)}" cy="${Y(P[li].w).toFixed(1)}" r="6" fill="#ff3b30" stroke="#121212" stroke-width="2"/></svg>`;
 }
 function bwPoint(ev) {
   const svg = ev.target.closest && ev.target.closest('#bwc'); if (!svg || !ui.bwPts) return;
@@ -906,7 +928,7 @@ async function pickPhoto(file, id) {
   } catch (e) { toast('No se ha podido usar esa foto'); }
 }
 const topBar = (t, l = '', r = '') => `<header class="tb"><span class="tbl">${l}</span><b>${esc(t)}</b><span class="tbr">${r}</span></header>`;
-const MAC = [['p', 'Proteína', '#5ab0ff', 4], ['c', 'Carbos', '#ffffff', 4], ['g', 'Grasa', '#ffb020', 9]];
+const MAC = [['p', 'Proteína', '#5ab0ff', 4], ['c', 'Carbos', '#e8e8e8', 4], ['g', 'Grasa', '#ffb020', 9]];
 function dietOn(x, train) { return !(x.only === 'train' && !train); }
 function dietSum(list, train) { const t = [0, 0, 0]; list.forEach(x => { if (x.m && dietOn(x, train)) x.m.forEach((v, j) => t[j] += v); }); return t; }
 const kcalOf = t => Math.round(t[0] * 4 + t[1] * 4 + t[2] * 9);
@@ -942,7 +964,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.2 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.3 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -985,7 +1007,7 @@ function celebrate(s) {
   const mins = s.sw && s.sw.first ? Math.round(swMs(s) / 60000) : null, dur = mins != null && mins >= 0 && mins < 600 ? (mins >= 60 ? `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}` : `${mins}'`) : '—';
   const C = 2 * Math.PI * 80, nm = (d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, '');
   const conf = Array.from({ length: 22 }, (_, i) => `<span style="left:${Math.round(Math.random() * 96)}%;animation-delay:${(Math.random() * .9).toFixed(2)}s">${emo[i % emo.length]}</span>`).join('');
-  openModal(`<div class="fink">Entreno completado</div><div class="finn">${esc(nm)}</div><div class="ring"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#212121" stroke-width="12"/><circle cx="90" cy="90" r="80" fill="none" stroke="${pct >= 100 ? '#38d9a9' : '#ffffff'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * Math.min(pct, 100) / 100).toFixed(1)} ${C.toFixed(1)}"/></svg><b>${pct}%<small>COMPLETADO</small></b></div><div class="fstats"><div class="fstat"><b>${dur}</b><span>Tiempo</span></div><div class="fstat"><b>${r.sets}/${total}</b><span>Series</span></div><div class="fstat"><b>${r.kg.toLocaleString('es-ES')}</b><span>Kg movidos</span></div><div class="fstat"><b>${r.recs.length}</b><span>${r.recs.length === 1 ? 'Récord' : 'Récords'}</span></div></div>${exTimesHtml(s)}${r.recs.length ? r.recs.map(x => `<div class="rec"><span>🏆 ${esc(x.n)}</span><b style="color:var(--ok)">+${fmt(Math.round(x.diff * 10) / 10)} kg est.</b></div>`).join('') : '<p class="small mut">Cuando repitas este día verás aquí tus mejoras.</p>'}<p class="small mut" style="margin-top:10px">${Sheets.on() ? '☁️ Enviando a tu hoja de Google…' : '💾 Guardado en tu iPhone.'}</p><button class="pri block" data-a="close" style="padding:16px">¡Genial!</button>`, 'fin');
+  openModal(`<div class="fink">Entreno completado</div><div class="finn">${esc(nm)}</div><div class="ring"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#212121" stroke-width="12"/><circle cx="90" cy="90" r="80" fill="none" stroke="${pct >= 100 ? '#38d9a9' : '#ff3b30'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * Math.min(pct, 100) / 100).toFixed(1)} ${C.toFixed(1)}"/></svg><b>${pct}%<small>COMPLETADO</small></b></div><div class="fstats"><div class="fstat"><b>${dur}</b><span>Tiempo</span></div><div class="fstat"><b>${r.sets}/${total}</b><span>Series</span></div><div class="fstat"><b>${r.kg.toLocaleString('es-ES')}</b><span>Kg movidos</span></div><div class="fstat"><b>${r.recs.length}</b><span>${r.recs.length === 1 ? 'Récord' : 'Récords'}</span></div></div>${exTimesHtml(s)}${r.recs.length ? r.recs.map(x => `<div class="rec"><span>🏆 ${esc(x.n)}</span><b style="color:var(--ok)">+${fmt(Math.round(x.diff * 10) / 10)} kg est.</b></div>`).join('') : '<p class="small mut">Cuando repitas este día verás aquí tus mejoras.</p>'}<p class="small mut" style="margin-top:10px">${Sheets.on() ? '☁️ Enviando a tu hoja de Google…' : '💾 Guardado en tu iPhone.'}</p><button class="pri block" data-a="close" style="padding:16px">¡Genial!</button>`, 'fin');
   if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { const c = document.createElement('div'); c.className = 'confetti'; c.innerHTML = conf; document.body.appendChild(c); setTimeout(() => c.remove(), 3600); }
 }
 
