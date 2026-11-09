@@ -408,6 +408,7 @@ const EX = {}; PLAN.forEach(d => d.ex.forEach(e => { EX[e.k] = { ...e, day: d.id
 
 /* ================= Utilidades ================= */
 const $ = s => document.querySelector(s);
+const nfmt = n => { const v = Math.round(Number(n) || 0), a = String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return (v < 0 ? '-' : '') + a; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = v => { if (v === '' || v == null) return null; const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; };
 const fmt = n => n == null ? '' : (Math.round(n * 100) / 100).toString().replace('.', ',');
@@ -638,7 +639,7 @@ function stepsOf(n) {
 function stepsLine() {
   if (!S.meta.steps) return '';
   const G = stepGoal(), t = S.meta.steps[dstr(Date.now())], p = t == null ? 0 : Math.min(100, Math.round(t / G * 100));
-  return `<div class="card stp2"><p class="cap">Pasos hoy</p><div class="n">${t == null ? '–' : t.toLocaleString('es-ES')}<small>/ ${G.toLocaleString('es-ES')}</small></div><div class="pb2 ${t >= G ? 'g' : ''}"><b style="width:${p}%"></b></div><p class="cap" style="margin-top:8px;font-size:13px">${t >= G ? 'Meta conseguida' : p + '% de la meta'}</p></div>`;
+  return `<div class="card stp2"><p class="cap">Pasos hoy</p><div class="n">${t == null ? '–' : nfmt(t)}<small>/ ${nfmt(G)}</small></div><div class="pb2 ${t >= G ? 'g' : ''}"><b style="width:${p}%"></b></div><p class="cap" style="margin-top:8px;font-size:13px">${t >= G ? 'Meta conseguida' : p + '% de la meta'}</p></div>`;
 }
 function weekCard() {
   const ws = weekStats(), nd = PLAN.filter(d => doneThisWeek(d.id)).length, mon = startOfDay() - ((new Date().getDay() + 6) % 7) * 864e5;
@@ -791,7 +792,7 @@ function chart(pts, key, unit) {
 function stReadout(i) {
   const x = (ui.stDays || [])[i]; if (!x) return '';
   const dd = x.d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' }), G = stepGoal();
-  return x.v == null ? `<span class="mut">${dd} · sin datos</span>` : `<b>${x.v.toLocaleString('es-ES')}</b> pasos <span class="mut">· ${dd}</span>${x.v >= G ? ' <span style="color:var(--acc)">✓ meta</span>' : ` <span class="mut">· faltaron ${(G - x.v).toLocaleString('es-ES')}</span>`}`;
+  return x.v == null ? `<span class="mut">${dd} · sin datos</span>` : `<b>${nfmt(x.v)}</b> pasos <span class="mut">· ${dd}</span>${x.v >= G ? ' <span style="color:var(--acc)">✓ meta</span>' : ` <span class="mut">· faltaron ${nfmt(G - x.v)}</span>`}`;
 }
 function stPoint(ev) {
   const sv = ev.target.closest && ev.target.closest('#stc'); if (!sv || !ui.stGeo) return;
@@ -819,7 +820,7 @@ function stepsCard() {
   });
   const gy = Y(G).toFixed(1);
   const svg = `<svg id="stc" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Pasos por día" style="touch-action:pan-y"><line x1="${pl}" x2="${W - pr}" y1="${gy}" y2="${gy}" stroke="#ffffff" stroke-dasharray="4 4" opacity=".6"/><text x="${W - pr}" y="${Number(gy) - 3}" text-anchor="end" font-size="9" fill="#ffffff" stroke="#121212" stroke-width="3" paint-order="stroke">meta ${kfmt(G)}</text>${bars}</svg>`;
-  return `<div class="card"><div class="row"><b>Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stro" id="stro">${stReadout(ui.stSel != null && ui.stSel < N ? ui.stSel : (() => { for (let k = N - 1; k >= 0; k--) if (days[k].v != null) return k; return N - 1; })())}</div><div class="stats"><div class="stat"><b>${avg.toLocaleString('es-ES')}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${best.toLocaleString('es-ES')}</b><span>mejor día</span></div></div></div>`;
+  return `<div class="card"><div class="row"><b>Pasos</b><span class="grow"></span><span class="seg"><button data-a="strange" data-n="7" class="${N === 7 ? 'on' : ''}">7 días</button><button data-a="strange" data-n="30" class="${N === 30 ? 'on' : ''}">30 días</button></span></div>${svg}<div class="stro" id="stro">${stReadout(ui.stSel != null && ui.stSel < N ? ui.stSel : (() => { for (let k = N - 1; k >= 0; k--) if (days[k].v != null) return k; return N - 1; })())}</div><div class="stats"><div class="stat"><b>${nfmt(avg)}</b><span>media diaria</span></div><div class="stat"><b>${hit}/${have.length}</b><span>días con meta</span></div><div class="stat"><b>${nfmt(best)}</b><span>mejor día</span></div></div></div>`;
 }
 const BWF = t => new Date(t).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 function bwReadout(i) {
@@ -911,7 +912,7 @@ const PH_DEF = { d1: UNS('photo-1526506118085-60ce8714f8c5'), d2: UNS('photo-177
 const Photos = {
   own(id) { return this.all()[id] || null; },
   all() { try { return JSON.parse(localStorage.getItem('entreno_photos') || '{}'); } catch (e) { return {}; } },
-  get(id) { const a = this.all(); return a[id] === 'none' ? null : a[id] || PH_DEF[id] || null; },
+  get(id) { return this.all()[id] || PH_DEF[id] || null; },
   set(id, url) { const a = this.all(); if (url) a[id] = url; else delete a[id]; try { localStorage.setItem('entreno_photos', JSON.stringify(a)); return true; } catch (e) { toast('No cabe la foto: prueba con otra más pequeña'); return false; } },
 };
 const phStyle = id => { const u = Photos.get(id); return u ? ` style="--img:url('${u}')"` : ''; };
@@ -936,12 +937,13 @@ function viewDieta() {
   const D = S.meta.diet;
   if (!D) return `${topBar('Dieta')}<div class="card"><p>${Sheets.on() ? 'Cargando tu dieta desde tu hoja de Google…' : 'Conecta tu hoja de Google en <b>Más</b> para ver aquí tu dieta.'}</p></div>`;
   const dow = new Date().getDay(), doneToday = sessionsSorted().some(x => x.done && dstr(x.date) === dstr(Date.now()));
-  if (!ui.dmode) ui.dmode = (dow >= 1 && dow <= 5) || doneToday ? 'train' : 'rest';
+  const today = dstr(Date.now());
+  if (!ui.dmode || ui.dmodeDay !== today) { ui.dmode = todayPlan() || doneToday ? 'train' : 'rest'; ui.dmodeDay = today; }
   const train = ui.dmode === 'train', meals = D.meals.filter(m => dietOn(m, train));
   const tot = [0, 0, 0]; meals.forEach(m => dietSum(m.i, train).forEach((v, j) => tot[j] += v)); const kc = kcalOf(tot);
   let h = `${topBar('Dieta')}<p class="small mut" style="margin-top:-4px">De ${esc(D.by || 'tu preparador')} · ${fdate(new Date(D.date + 'T12:00'))}</p>`;
   h += `<div class="seg"><button class="${train ? 'on' : ''}" data-a="dmode" data-m="train">Día de entreno</button><button class="${train ? '' : 'on'}" data-a="dmode" data-m="rest">Día de descanso</button></div>`;
-  h += `<div class="card dtot"><div class="dk"><b>${kc.toLocaleString('es-ES')}</b><span>kcal / día</span></div><div class="dbars">${MAC.map(([k, n, col, f], j) => `<div class="dbar"><div class="row"><span>${n}</span><span class="grow"></span><b>${Math.round(tot[j])} g</b><span class="mut small">&nbsp;${kc ? Math.round(tot[j] * f / kc * 100) : 0}%</span></div><i><b style="width:${kc ? Math.round(tot[j] * f / kc * 100) : 0}%;background:${col}"></b></i></div>`).join('')}</div></div>`;
+  h += `<div class="card dtot"><div class="dk"><b>${nfmt(kc)}</b><span>kcal / día</span></div><div class="dbars">${MAC.map(([k, n, col, f], j) => `<div class="dbar"><div class="row"><span>${n}</span><span class="grow"></span><b>${Math.round(tot[j])} g</b><span class="mut small">&nbsp;${kc ? Math.round(tot[j] * f / kc * 100) : 0}%</span></div><i><b style="width:${kc ? Math.round(tot[j] * f / kc * 100) : 0}%;background:${col}"></b></i></div>`).join('')}</div></div>`;
   meals.forEach(m => {
     const t = dietSum(m.i, train), k = kcalOf(t);
     h += `<div class="card meal"><div class="row"><b class="disp mn">${esc(m.n)}</b><span class="grow"></span>${k ? `<span class="mk">${k} kcal</span>` : ''}</div>${m.w ? `<div class="small mut">${esc(m.w)}</div>` : ''}${m.note ? `<div class="small" style="color:var(--warn)">${esc(m.note)}</div>` : ''}<ul>${m.i.map(x => `<li class="${dietOn(x, train) ? '' : 'off'}">${esc(x.t)}${x.alt ? `<span class="alt">${esc(x.alt)}</span>` : ''}${!dietOn(x, train) ? '<span class="alt">solo días de entreno</span>' : ''}</li>`).join('')}</ul>${k ? `<div class="mm">${MAC.map(([kk, n, col], j) => `<span><i style="background:${col}"></i>${n[0]} ${Math.round(t[j])} g</span>`).join('')}</div>` : ''}</div>`;
@@ -964,7 +966,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.3 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.4 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -1007,7 +1009,7 @@ function celebrate(s) {
   const mins = s.sw && s.sw.first ? Math.round(swMs(s) / 60000) : null, dur = mins != null && mins >= 0 && mins < 600 ? (mins >= 60 ? `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}` : `${mins}'`) : '—';
   const C = 2 * Math.PI * 80, nm = (d.n.split(' · ')[2] || d.s).replace(/\s*\(.*\)/, '');
   const conf = Array.from({ length: 22 }, (_, i) => `<span style="left:${Math.round(Math.random() * 96)}%;animation-delay:${(Math.random() * .9).toFixed(2)}s">${emo[i % emo.length]}</span>`).join('');
-  openModal(`<div class="fink">Entreno completado</div><div class="finn">${esc(nm)}</div><div class="ring"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#212121" stroke-width="12"/><circle cx="90" cy="90" r="80" fill="none" stroke="${pct >= 100 ? '#38d9a9' : '#ff3b30'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * Math.min(pct, 100) / 100).toFixed(1)} ${C.toFixed(1)}"/></svg><b>${pct}%<small>COMPLETADO</small></b></div><div class="fstats"><div class="fstat"><b>${dur}</b><span>Tiempo</span></div><div class="fstat"><b>${r.sets}/${total}</b><span>Series</span></div><div class="fstat"><b>${r.kg.toLocaleString('es-ES')}</b><span>Kg movidos</span></div><div class="fstat"><b>${r.recs.length}</b><span>${r.recs.length === 1 ? 'Récord' : 'Récords'}</span></div></div>${exTimesHtml(s)}${r.recs.length ? r.recs.map(x => `<div class="rec"><span>🏆 ${esc(x.n)}</span><b style="color:var(--ok)">+${fmt(Math.round(x.diff * 10) / 10)} kg est.</b></div>`).join('') : '<p class="small mut">Cuando repitas este día verás aquí tus mejoras.</p>'}<p class="small mut" style="margin-top:10px">${Sheets.on() ? '☁️ Enviando a tu hoja de Google…' : '💾 Guardado en tu iPhone.'}</p><button class="pri block" data-a="close" style="padding:16px">¡Genial!</button>`, 'fin');
+  openModal(`<div class="fink">Entreno completado</div><div class="finn">${esc(nm)}</div><div class="ring"><svg viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#212121" stroke-width="12"/><circle cx="90" cy="90" r="80" fill="none" stroke="${pct >= 100 ? '#38d9a9' : '#ff3b30'}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * Math.min(pct, 100) / 100).toFixed(1)} ${C.toFixed(1)}"/></svg><b>${pct}%<small>COMPLETADO</small></b></div><div class="fstats"><div class="fstat"><b>${dur}</b><span>Tiempo</span></div><div class="fstat"><b>${r.sets}/${total}</b><span>Series</span></div><div class="fstat"><b>${nfmt(r.kg)}</b><span>Kg movidos</span></div><div class="fstat"><b>${r.recs.length}</b><span>${r.recs.length === 1 ? 'Récord' : 'Récords'}</span></div></div>${exTimesHtml(s)}${r.recs.length ? r.recs.map(x => `<div class="rec"><span>🏆 ${esc(x.n)}</span><b style="color:var(--ok)">+${fmt(Math.round(x.diff * 10) / 10)} kg est.</b></div>`).join('') : '<p class="small mut">Cuando repitas este día verás aquí tus mejoras.</p>'}<p class="small mut" style="margin-top:10px">${Sheets.on() ? '☁️ Enviando a tu hoja de Google…' : '💾 Guardado en tu iPhone.'}</p><button class="pri block" data-a="close" style="padding:16px">¡Genial!</button>`, 'fin');
   if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { const c = document.createElement('div'); c.className = 'confetti'; c.innerHTML = conf; document.body.appendChild(c); setTimeout(() => c.remove(), 3600); }
 }
 
@@ -1150,7 +1152,7 @@ document.getElementById('phin').addEventListener('change', ev => { const f = ev.
 document.addEventListener('change', ev => {
   const el = ev.target;
   if (el.id === 'impfile' && el.files[0]) { el.files[0].text().then(t => { let o; try { o = JSON.parse(t); } catch (x) { toast('Archivo no válido'); return; } confirmBox('¿Restaurar esta copia?', 'Restaurar', () => importData(o), 'Sustituirá todos los registros actuales.'); }); return; }
-  if (el.id === 'stepgoal') { const v = Math.round(Number(el.value)); if (v >= 1000 && v <= 100000) { S.meta.stepGoal = v; Store.save('meta', false); toast('Meta: ' + v.toLocaleString('es-ES') + ' pasos'); } else { el.value = stepGoal(); toast('Entre 1.000 y 100.000'); } return; }
+  if (el.id === 'stepgoal') { const v = Math.round(Number(el.value)); if (v >= 1000 && v <= 100000) { S.meta.stepGoal = v; Store.save('meta', false); toast('Meta: ' + nfmt(v) + ' pasos'); } else { el.value = stepGoal(); toast('Entre 1.000 y 100.000'); } return; }
   if (el.dataset.f) {
     const s = cur(); if (!s) return; const x = s.ex[el.dataset.k][+el.dataset.i], f = el.dataset.f, v = num(el.value);
     x[f] = f[0] === 'r' && v != null ? Math.round(v) : v; Store.save(s.id);
@@ -1222,17 +1224,18 @@ function kpScroll() {
   if (r.top < 8 || r.bottom > room - 8 || Math.abs(r.top - want) > room / 2) { try { scrollBy({ top: r.top - want, behavior: 'smooth' }); } catch (e) {} }
 }
 function kpGo(k, i, f) {
+  ui.kpLastScroll = 'set:' + k + ':' + i + ':' + f;
   ui.kp = { mode: 'set', k, i, f, buf: '', typed: false };
   if (isPlayer()) { const j = DAY[cur().day].ex.findIndex(e => e.k === k); if (j !== ui.sx) { ui.sx = j; ui.kpHide = false; render(); scrollTo(0, 0); } }
   kpDraw(); kpMark(); kpScroll();
 }
 function plGo(n) { ui.kp = null; kpClose(); ui.kpHide = false; ui.sx = (ui.sx || 0) + n; render(); scrollTo(0, 0); }
 function kpBw() { ui.kp = { mode: 'bw', f: 'w', buf: '', typed: false }; kpDraw(); kpMark(); kpScroll(); }
-function kpClose() { ui.kp = null; const b = $('#kp'); b.hidden = true; b.innerHTML = ''; document.body.classList.remove('kpon'); kpMark(); }
+function kpClose() { ui.kpLastScroll = null; ui.kp = null; const b = $('#kp'); b.hidden = true; b.innerHTML = ''; document.body.classList.remove('kpon'); kpMark(); }
 function kpSync() {
   const k = ui.kp; if (!k) return;
   if (k.mode === 'set' ? !(ui.view === 'hoy' && cur() && EX[k.k] && cur().ex[k.k]) : ui.view !== 'progreso') { kpClose(); return; }
-  kpMark(); requestAnimationFrame(() => kpScroll());
+  kpMark(); const key = k.mode + ':' + k.k + ':' + k.i + ':' + k.f; if (key !== ui.kpLastScroll) { ui.kpLastScroll = key; requestAnimationFrame(() => kpScroll()); }
 }
 // En modo «uno a uno» el teclado se abre solo en la primera serie pendiente del ejercicio
 function kpAuto() {
@@ -1283,7 +1286,7 @@ Object.assign(actions, {
   plgo(el) { plGo(+el.dataset.n); },
   photo(el) { ui.phFor = el.dataset.d; document.getElementById('phin').click(); },
   phdel(el) { Photos.set(el.dataset.d, null); render(); },
-  dmode(el) { ui.dmode = el.dataset.m; render(); },
+  dmode(el) { ui.dmode = el.dataset.m; ui.dmodeDay = dstr(Date.now()); render(); },
   sw() { const s = cur(); if (!s) return; const w = s.sw || (s.sw = { acc: 0, run: null, first: null }); if (w.run) { w.acc += Date.now() - w.run; w.run = null; } else { w.run = Date.now(); if (!w.first) w.first = w.run; } Store.save(s.id); render(); },
   swreset() { const s = cur(); if (!s) return; confirmBox('¿Poner el cronómetro a cero?', 'Poner a cero', () => { s.sw = null; Object.values(s.ex).forEach(L => L.forEach(x => delete x.st)); Store.save(s.id); closeModal(); render(); }, 'El tiempo por ejercicio volverá a contar desde que lo inicies.'); },
   plist() { ui.list = ui.list ? 0 : 2; try { localStorage.setItem('entreno_mode', ui.list ? 'lista' : 'uno'); } catch (e) {} kpClose(); render(); scrollTo(0, 0); },
