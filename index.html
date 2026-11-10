@@ -331,6 +331,8 @@ nav a.on{color:var(--acc)}
 .stick{position:sticky;top:0;z-index:8;background:#000;margin:0 -12px;padding:calc(4px + env(safe-area-inset-top)) 12px 2px}
 .stick .plbar{margin-bottom:10px}
 main:has(.stick){padding-top:0}
+#kp,#kp button{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+#kp button.pr{filter:brightness(1.45)}
 </style>
 </head>
 <body>
@@ -977,7 +979,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">Tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.8 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.9 · plan de adaptación</p>`;
   return h;
 }
 function render() {
@@ -1062,7 +1064,7 @@ function clkSync() { const on = !!(ui.view === 'hoy' && cur() && !cur().done); i
 function swLoop() {
   const s = cur(), T = document.getElementById('clkT');
   if (!(T && s && !s.done && s.sw && s.sw.run)) { swOn = false; return; }
-  T.innerHTML = swFmt(swMs(s)); requestAnimationFrame(swLoop);
+  T.innerHTML = swFmt(swMs(s)); setTimeout(() => requestAnimationFrame(swLoop), 66);
 }
 function swStart() { if (!swOn) { swOn = true; requestAnimationFrame(swLoop); } }
 function startTimer(sec) { if (!sec) { stopTimer(); return; } ui.timer = { start: Date.now(), end: Date.now() + sec * 1000 }; clearInterval(startTimer.i); startTimer.i = setInterval(tick, 250); tick(); }
@@ -1159,7 +1161,15 @@ const actions = {
 };
 document.addEventListener('pointerdown', bwPoint);
 document.addEventListener('pointermove', bwPoint);
+let kpDown = 0;
+document.addEventListener('pointerdown', ev => {
+  const b = ev.target.closest && ev.target.closest('#kp [data-a]'); if (!b || b.disabled) return;
+  ev.preventDefault(); kpDown = Date.now();
+  b.classList.add('pr'); setTimeout(() => b.classList.remove('pr'), 120);
+  const f = actions[b.dataset.a]; if (f) f(b);
+});
 document.addEventListener('click', ev => {
+  if (ev.target.closest && ev.target.closest('#kp') && Date.now() - kpDown < 1000) { ev.preventDefault(); return; }
   if (ev.target === $('#modal')) { closeModal(); return; }
   const fi = ev.target.closest('input[data-f]');
   if (fi && cur()) { ev.preventDefault(); fi.blur(); kpGo(fi.dataset.k, +fi.dataset.i, fi.dataset.f); return; }
@@ -1209,7 +1219,7 @@ function kpVal(f) {
   if (el.value !== '') return { v: el.value, sug: true };
   return { v: el.dataset.sug && num(el.placeholder) != null ? el.placeholder : '', sug: true };
 }
-function kpDraw() {
+function kpDraw(partial) {
   const k = ui.kp, box = $('#kp'); if (!k) return;
   let head, F, okLab;
   if (k.mode === 'bw') { head = `<div class="kpn">Peso de hoy</div><div class="small mut">${fdate(Date.now())}</div>`; F = ['w']; okLab = 'Guardar'; }
@@ -1226,9 +1236,18 @@ function kpDraw() {
   }).join('');
   const noComma = k.f[0] === 'r';
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'].map(d => `<button data-a="kpkey" data-d="${d}" ${d === ',' && noComma ? 'disabled' : ''} aria-label="${d === '⌫' ? 'Borrar' : d}">${d}</button>`).join('');
-  box.innerHTML = `<div class="kph"><div>${head}</div><button class="kpx sm ghost" data-a="kpclose" aria-label="Cerrar teclado">✕</button></div><div class="kpfs ${F.length > 2 ? 'bi' : ''}">${chips}</div><div class="kpg">${keys}</div><button class="kpok" data-a="kpok">${okLab}</button>`;
+  const html = `<div class="kph"><div>${head}</div><button class="kpx sm ghost" data-a="kpclose" aria-label="Cerrar teclado">✕</button></div><div class="kpfs ${F.length > 2 ? 'bi' : ''}">${chips}</div><div class="kpg">${keys}</div><button class="kpok" data-a="kpok">${okLab}</button>`;
+  if (partial) { const t = document.createElement('div'); t.innerHTML = html; return t; }
+  box.innerHTML = html;
   box.hidden = false; document.body.classList.add('kpon');
   document.documentElement.style.setProperty('--kph', box.offsetHeight + 'px');
+}
+// Al teclear no se redibujan las teclas (si se sustituye el botón bajo el dedo, Safari pierde el toque)
+function kpRefresh() {
+  const k = ui.kp, box = $('#kp'); if (!k || box.hidden) return;
+  const t = kpDraw(true), a = box.querySelector('.kpfs'), b = box.querySelector('.kpok');
+  if (!t || !a || !b) { kpDraw(); return; }
+  a.replaceWith(t.querySelector('.kpfs')); b.replaceWith(t.querySelector('.kpok'));
 }
 function kpMark() {
   document.querySelectorAll('input.kpon').forEach(x => x.classList.remove('kpon'));
@@ -1291,7 +1310,7 @@ Object.assign(actions, {
         k.buf = k.buf === '0' ? d : k.buf + d;
       }
     }
-    kpWrite(); kpDraw();
+    kpWrite(); kpRefresh();
   },
   kpfield(el) { const k = ui.kp; if (!k || k.mode === 'bw' || el.dataset.f === k.f) return; kpCommit(); kpGo(k.k, k.i, el.dataset.f); },
   kpclose() { kpCommit(); kpClose(); Store.flush(); },
