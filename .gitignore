@@ -1,0 +1,25 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+token*.txt
+credentials*.json
+
+# Apps Script (contiene el token)
+script/
+Code.gs
+.clasp.json
+.clasprc.json
+
+# Datos y pruebas
+*.backup.json
+entreno-*.json
+shot_*.png
+node_modules/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
