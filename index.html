@@ -42,7 +42,7 @@ button:disabled{opacity:.5}
 .set.done{opacity:.75}
 .slab{font-size:13px;font-weight:600;display:flex;justify-content:space-between;gap:6px}
 .prev{font-size:12px;color:var(--mut);margin-top:2px}
-.hint{font-size:12px;color:var(--ok);font-weight:600}
+.hint{font-size:12px;color:var(--ok);font-weight:600}.hint.up{color:#fff;background:rgba(255,59,48,.16);border:1px solid rgba(255,59,48,.45);border-radius:8px;padding:6px 8px;margin:4px 0 6px}.upchip{display:inline-block;background:var(--acc);color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;padding:2px 7px;vertical-align:2px;letter-spacing:.2px}.bichip.upc{background:#fff;color:#000}.upday{font-size:13px;font-weight:600;margin:6px 0 10px;color:#fff}
 .inp{display:grid;grid-template-columns:1fr 1fr 44px;gap:6px;margin-top:6px;align-items:end}
 .inp.bi{grid-template-columns:1fr 1fr 1fr 1fr 44px}
 input.pre{color:var(--mut);font-style:italic}
@@ -428,6 +428,19 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const fdate = t => new Date(t).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600); }
 function rangeTop(r) { const m = String(r || '').match(/(\d+)\s*-\s*(\d+)/); return m ? +m[2] : null; }
+/* ---- Progresión: si la última vez llegaste al tope de reps de la serie, toca subir peso ---- */
+function repTarget(sp) { // reps a alcanzar para subir: el tope del rango («8-10» → 10), o la cifra fija («12», «12 + X» → 12)
+  if (!sp || sp.t === 'act' || sp.t === 'drop') return null;
+  if (sp.t === 'bi') return Number(sp.reps) || null;
+  const t = rangeTop(sp.range); if (t) return t;
+  const m = String(sp.range || '').match(/^\s*(\d+)\s*$/); return m ? +m[1] : null;
+}
+const nextW = w => round05(w + (w >= 15 ? 2.5 : w >= 10 ? 2 : 1)); // salto pequeño: 2,5 kg en barras y máquinas, menos en mancuernas ligeras
+function upSet(sp, px) { // { from, to, reps, top } si toca subir en esta serie; si no, null
+  const top = repTarget(sp), w = px && num(px.w), r = px && num(px.r);
+  return px && px.done && top && w && r != null && r >= top ? { from: w, to: nextW(w), reps: r, top } : null;
+}
+function upCount(e) { const last = lastFor(e.k); return last ? e.sets.filter((sp, i) => upSet(sp, last.sets[i])).length : 0; }
 function setLabel(sp, i, ex) {
   if (sp.t === 'bi') return `Serie ${i + 1} · ${sp.reps} + X`;
   if (sp.t === 'top') return `Serie ${ex ? ex.sets.slice(0, i).filter(x => x.t === 'top').length + 1 : i + 1} · ${sp.range} al fallo${sp.lab ? ' (' + sp.lab.toLowerCase() + ')' : ''}`;
@@ -690,7 +703,7 @@ function viewHoy() {
   if (!dr) {
     if (tp) {
       const w = doneThisWeek(tp.id), hecho = w && startOfDay(w.date) === startOfDay();
-      h += `<div class="card ${hecho ? 'day done' : 'today'} hero2 ${phCls(tp.id)}"${phStyle(tp.id)}><p class="cap">Hoy · ${WD[tn - 1]} · ${hecho ? 'hecho' : 'te toca'}</p><h2 class="hd">${esc(nm(tp))}</h2><p class="sub">${sbt(tp) ? esc(sbt(tp)) + ' · ' : ''}${tp.ex.length} ejercicios</p>${hecho ? '<span class="chip ok">✓ Ya hecho hoy</span>' : `<button class="pri block" data-a="start" data-d="${tp.id}">Empezar entreno</button>`}</div>`;
+      h += `<div class="card ${hecho ? 'day done' : 'today'} hero2 ${phCls(tp.id)}"${phStyle(tp.id)}><p class="cap">Hoy · ${WD[tn - 1]} · ${hecho ? 'hecho' : 'te toca'}</p><h2 class="hd">${esc(nm(tp))}</h2><p class="sub">${sbt(tp) ? esc(sbt(tp)) + ' · ' : ''}${tp.ex.length} ejercicios</p>${(() => { if (hecho) return ''; const u = tp.ex.filter(e => upCount(e)); return u.length ? `<p class="upday">▲ Toca subir peso en ${u.length === 1 ? '1 ejercicio' : u.length + ' ejercicios'}: ${esc(u.map(e => e.n.replace(/\s*\(.*?\)/g, '')).join(', '))}</p>` : ''; })()}${hecho ? '<span class="chip ok">✓ Ya hecho hoy</span>' : `<button class="pri block" data-a="start" data-d="${tp.id}">Empezar entreno</button>`}</div>`;
     } else {
       h += `<div class="card hero2"><p class="cap">Hoy · ${WD[tn - 1]}</p><h2 class="hd">Descanso</h2><p class="sub" style="margin:0">Los músculos crecen mientras descansas.</p></div>`;
     }
@@ -731,7 +744,7 @@ function viewPlayer(s) {
     return h;
   }
   const E = L[ui.sx], lastE = lastFor(E.k, s.id);
-  h += `<div class="media ${phCls(d.id)}"${phStyle(d.id)}><div class="exmeta"><p class="cap">Ejercicio ${ui.sx + 1} de ${n}</p><span class="et">Este ejercicio <b id="clkE2">—</b></span></div><div class="mt">${RED.has(E.k) ? '<span class="bichip">BISERIE</span>' : ''}${esc(E.n)}</div>${E.note ? `<div class="note">${esc(E.note)}</div>` : ''}<div class="mrow">${lastE ? `<button data-a="copyprev" data-k="${E.k}">↺ Repetir lo de la última vez</button>` : ''}<button data-a="photo" data-d="${d.id}" aria-label="Poner foto de este entreno">${IC.cam.replace('<svg', '<svg class="ic" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px"')}Foto</button></div></div>${exHtml(s, E, 'pl')}`;
+  h += `<div class="media ${phCls(d.id)}"${phStyle(d.id)}><div class="exmeta"><p class="cap">Ejercicio ${ui.sx + 1} de ${n}</p><span class="et">Este ejercicio <b id="clkE2">—</b></span></div><div class="mt">${RED.has(E.k) ? '<span class="bichip">BISERIE</span>' : ''}${upCount(E) ? '<span class="bichip upc">▲ TOCA SUBIR</span>' : ''}${esc(E.n)}</div>${E.note ? `<div class="note">${esc(E.note)}</div>` : ''}<div class="mrow">${lastE ? `<button data-a="copyprev" data-k="${E.k}">↺ Repetir lo de la última vez</button>` : ''}<button data-a="photo" data-d="${d.id}" aria-label="Poner foto de este entreno">${IC.cam.replace('<svg', '<svg class="ic" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px"')}Foto</button></div></div>${exHtml(s, E, 'pl')}`;
   h += `<div class="plnav">${ui.sx > 0 ? `<button data-a="plgo" data-n="-1">‹ Anterior</button>` : ''}<button data-a="plgo" data-n="1">${ui.sx === n - 1 ? 'Terminar ›' : 'Siguiente ›'}</button></div>`;
   return h;
 }
@@ -752,21 +765,21 @@ function exHtml(s, e, cls) {
     while (logs.length < e.sets.length) logs.push({ w: null, r: null, w2: null, r2: null, done: false }); // el plan ganó series
     const last = lastFor(e.k, s.id);
     const allDone = logs.every(x => x.done);
-    h += `<div class="ex ${cls} ${allDone ? 'ok' : ''}"><div class="exh"><div><div class="exn ${RED.has(e.k) ? 'r' : ''}">${allDone ? '<span class="okb">✓</span> ' : ''}${esc(e.n)}</div>${e.note ? `<div class="note">${esc(e.note)}</div>` : ''}</div>${last ? `<button class="sm ghost" data-a="copyprev" data-k="${e.k}" title="Rellenar con lo de la última vez">↺ Anterior</button>` : ''}</div>`;
+    h += `<div class="ex ${cls} ${allDone ? 'ok' : ''}"><div class="exh"><div><div class="exn ${RED.has(e.k) ? 'r' : ''}">${allDone ? '<span class="okb">✓</span> ' : ''}${esc(e.n)}${!allDone && cls !== 'pl' && upCount(e) ? ' <span class="upchip">▲ subir</span>' : ''}</div>${e.note ? `<div class="note">${esc(e.note)}</div>` : ''}</div>${last ? `<button class="sm ghost" data-a="copyprev" data-k="${e.k}" title="Rellenar con lo de la última vez">↺ Anterior</button>` : ''}</div>`;
     e.sets.forEach((sp, i) => {
       const x = logs[i], px = last && last.sets[i];
-      let phW = px && px.w != null ? fmt(px.w) : 'kg', sW = !!(px && px.w != null);
+      const up = upSet(sp, px);
+      let phW = up ? fmt(up.to) : px && px.w != null ? fmt(px.w) : 'kg', sW = !!(px && px.w != null);
       if (sp.t === 'drop') { const pw = num(logs[i - 1] && logs[i - 1].w); if (pw) { phW = fmt(round05(pw * (1 - sp.pct / 100))); sW = true; } }
       const sR = !!(px && px.r != null), phR = sR ? px.r : (sp.t === 'bi' ? sp.reps : (sp.range || ''));
-      const tp = rangeTop(sp.range);
-      const hint = px && px.done && tp && px.r >= tp && sp.t !== 'act' ? `<div class="hint">↑ La última vez llegaste a ${px.r}: toca subir peso</div>` : '';
+      const hint = up ? `<div class="hint up">▲ Toca subir: llegaste a ${up.reps} reps (tope ${up.top}) con ${fmt(up.from)} kg. Prueba con ${fmt(up.to)} kg</div>` : '';
       h += `<div class="set ${x.done ? 'done' : ''}"><div class="slab"><span>${esc(setLabel(sp, i, e))}</span>${sp.lab && sp.t === 'bi' ? '' : ''}</div>${sp.lab && sp.t === 'bi' ? `<div class="note">${esc(sp.lab)}</div>` : ''}`;
       h += px && px.done ? `<div class="prev">Anterior (${fdate(last.s.date)}): ${esc(prevText(sp, px))}</div>` : '';
       h += hint;
       const inp = (f, ph, lab, cls, sug, pre) => { const pf = !!pre && x[f] == null; return `<div><label class="${cls || ''}">${lab}</label><input data-f="${f}" data-k="${e.k}" data-i="${i}" ${sug ? 'data-sug="1"' : ''} ${pf ? 'data-pre="1"' : ''} class="${pf ? 'pre' : ''}" readonly inputmode="none" placeholder="${esc(ph)}" value="${x[f] == null ? (pf ? esc(String(ph)) : '') : esc(fmt(x[f]))}"></div>`; };
       const tick = `<button class="tick ${x.done ? 'on' : ''}" data-a="tick" data-k="${e.k}" data-i="${i}" aria-label="Serie hecha">✓</button>`;
       if (sp.t === 'bi') {
-        const nw = num(x.w), sW2 = !!(px && px.w2 != null) || !!nw, phW2 = px && px.w2 != null ? fmt(px.w2) : nw ? fmt(round05(nw / 2)) : 'kg', sR2 = !!(px && px.r2 != null);
+        const nw = num(x.w) || (up ? up.to : null), sW2 = !!(px && px.w2 != null) || !!nw, phW2 = up ? fmt(round05(up.to / 2)) : px && px.w2 != null ? fmt(px.w2) : nw ? fmt(round05(nw / 2)) : 'kg', sR2 = !!(px && px.r2 != null);
         h += `<div class="inp bi">${inp('w', phW, 'kg', '', sW, sW)}${inp('r', phR, 'reps', '', sR, sR)}${inp('w2', phW2, 'kg lenta', 'slow', sW2, !!(px && px.w2 != null))}${inp('r2', sR2 ? px.r2 : 'X', 'reps lentas', 'slow', sR2, sR2)}${tick}</div>`;
       } else {
         h += `<div class="inp">${inp('w', phW, 'kg', '', sW, sW && sp.t !== 'drop')}${inp('r', phR, 'reps', '', sR, sR)}${tick}</div>`;
@@ -1186,7 +1199,7 @@ function viewMas() {
   h += `<h2>Copia en archivo</h2><div class="card"><p>Última copia: <b>${S.meta.lastBackup ? new Date(S.meta.lastBackup).toLocaleString('es-ES') : 'nunca'}</b>${Backup.dirty() ? ' · <span style="color:var(--warn)">hay cambios sin copiar</span>' : ''}</p><button class="pri block" data-a="backup">Guardar copia (Archivos → Google Drive)</button><p class="small mut">En el iPhone se abre Compartir: pulsa <b>Guardar en Archivos</b> y elige <b>Google Drive</b> (con la app de Drive instalada).</p></div>`;
   h += `<div class="card"><b>Restaurar una copia</b><p class="small mut">Sustituye todos los registros de este dispositivo.</p><input type="file" id="impfile" accept=".json,application/json"></div>`;
   h += `<div class="card"><b>Enviar al entrenador</b><p class="small mut">La revisión semanal con tu plantilla, lista para WhatsApp.</p><button class="block" data-a="chkgo">Preparar revisión semanal</button><p class="small mut" style="margin-top:12px">O la tabla con todas tus series (se abre en Excel o Google Sheets).</p><button class="block ghost" data-a="csv">Exportar tabla (CSV)</button></div>`;
-  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.13 · plan de adaptación</p>`;
+  h += `<h2>Datos</h2><div class="card"><p class="small mut">${n} entrenos guardados en este dispositivo, sin cuenta ni servidor.</p><button class="danger block" data-a="wipe">Borrar todos los registros</button></div><p class="small mut" style="text-align:center">Mi Entreno 3.14 · plan de adaptación</p>`;
   return h;
 }
 const typing = () => { const a = document.activeElement; return !!a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !a.readOnly && a.type !== 'checkbox')); };
